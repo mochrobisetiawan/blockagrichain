@@ -90,3 +90,13 @@ Mode dev frontend (hot reload): `cd frontend && npm install && npm run dev` (pro
 - **Transaction Feedback**: toast + notifikasi event real-time.
 - **Blockchain Evidence**: TxID + Block Number + Block Hash pada tiap aksi.
 - **Verification Tool**: menu **Cek Hash** + **Verifikasi Integritas** (blok native Fabric).
+
+## Dokumentasi (`docs/`)
+| Folder | Isi |
+|---|---|
+| `docs/spesifikasi/` | **SKPL & DPPL** (PDF/DOCX/PPTX + ekstrak teks) |
+| `docs/prototype/` | Prototype UI/UX React (final + sumber terbaca) |
+| `docs/mockup/` | Mockup HTML per peran (BlockAgriCulture) |
+| `docs/flow-diagram/` | ERD, on-chain, activity/PlantUML |
+| `docs/domain-design/` | Domain design blockchain |
+| `docs/manajemen-proyek/` | Project Charter (DOCX) + presentasi (PPTX) + generator |
