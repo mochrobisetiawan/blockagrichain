@@ -64,10 +64,19 @@ secret **menimpa** env. Cocok dipakai bersama **RDS for SQL Server** (DB terkelo
    export AWS_REGION=ap-southeast-1
    docker compose -f deploy/docker-compose.app.yml up -d --build
    ```
-   > Jika pakai **RDS**, hapus service `mssql` dari compose & arahkan `DATABASE_URL` (di secret) ke RDS.
-   > Untuk SQL Server container, password SA-nya tetap di-set host:
-   > `export MSSQL_SA_PASSWORD=$(aws secretsmanager get-secret-value --secret-id blockagri/db --query SecretString --output text)`.
    `AWS_SECRET_ID` kosong → backend memakai env biasa (fallback dev lokal).
+
+### Mode RDS (SQL Server terkelola — tanpa container mssql)
+Gunakan compose khusus **`docker-compose.app-rds.yml`** (hanya backend + frontend):
+```bash
+cd fabric && ./network.sh up && cd ..      # jaringan Fabric (14 kontainer)
+export AWS_REGION=ap-southeast-1 AWS_SECRET_ID=blockagri/app S3_BUCKET=blockagri-uploads-xxx
+docker compose -f deploy/docker-compose.app-rds.yml up -d --build
+# atau lewat skrip: COMPOSE_FILE=docker-compose.app-rds.yml bash deploy/up-ec2.sh
+```
+Isi `DATABASE_URL` di **secret** mengarah ke RDS:
+`sqlserver://admin:PASS@<endpoint>.rds.amazonaws.com:1433?database=blockagri&encrypt=true&trustservercertificate=true`
+Pastikan **Security Group RDS** mengizinkan **port 1433 dari SG EC2**.
 
 ## 1. Siapkan EC2
 - **AMI**: Ubuntu 22.04/24.04. **Tipe**: minimal `t3.large` (2 vCPU/8 GB) — Fabric + SQL Server cukup berat.

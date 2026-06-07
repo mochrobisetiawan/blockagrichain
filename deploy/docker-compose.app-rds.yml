@@ -1,0 +1,51 @@
+# Lapisan aplikasi untuk SQL Server di AWS RDS (terkelola) — TANPA container mssql.
+# DATABASE_URL diisi dari AWS Secrets Manager (AWS_SECRET_ID) ATAU env DATABASE_URL.
+#
+#   (1) cd fabric && ./network.sh up && cd ..
+#   (2) export AWS_REGION=ap-southeast-1 AWS_SECRET_ID=blockagri/app S3_BUCKET=...
+#   (3) docker compose -f deploy/docker-compose.app-rds.yml up -d --build
+#   Frontend: http://<IP>:8081   API: http://<IP>:8080
+
+networks:
+  blockagri:
+    external: true   # dibuat oleh fabric/network.sh up
+
+services:
+  backend:
+    build: ../backend-go
+    environment:
+      PORT: "8080"
+      # Rahasia dari AWS Secrets Manager (disarankan). Isi DATABASE_URL di secret ke RDS:
+      #   sqlserver://admin:PASS@<endpoint>.rds.amazonaws.com:1433?database=blockagri&encrypt=true&trustservercertificate=true
+      AWS_SECRET_ID: "${AWS_SECRET_ID:-}"
+      AWS_REGION: "${AWS_REGION:-ap-southeast-1}"
+      # Fallback bila tidak pakai Secrets Manager (isi DATABASE_URL langsung ke RDS):
+      DATABASE_URL: "${DATABASE_URL:-}"
+      JWT_KEY: "${JWT_KEY:-ganti-rahasia-ini-di-produksi-minimal-32-karakter}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:8081,http://localhost:5173}"
+      # Object storage off-chain (S3)
+      S3_BUCKET: "${S3_BUCKET:-}"
+      S3_REGION: "${AWS_REGION:-ap-southeast-1}"
+      S3_ENDPOINT: "${S3_ENDPOINT:-}"
+      S3_PUBLIC_BASE_URL: "${S3_PUBLIC_BASE_URL:-}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+      # Fabric
+      FABRIC_CHANNEL: "blockagri"
+      FABRIC_CHAINCODE: "blockagri"
+      FABRIC_CRYPTO_PATH: "/fabric/organizations"
+      FABRIC_PETANI_PEER: "peer0.petani.blockagri.id:7051"
+      FABRIC_BULOG_PEER: "peer0.bulog.blockagri.id:8051"
+      FABRIC_KEMENTAN_PEER: "peer0.kementan.blockagri.id:9051"
+      FABRIC_KEMENKEU_PEER: "peer0.kemenkeu.blockagri.id:10051"
+      FABRIC_PIHC_PEER: "peer0.pihc.blockagri.id:11051"
+    volumes:
+      - ../fabric/organizations:/fabric/organizations:ro
+    ports: ["8080:8080"]
+    networks: [blockagri]
+
+  frontend:
+    build: ../frontend
+    depends_on: [backend]
+    ports: ["8081:80"]
+    networks: [blockagri]

@@ -23,8 +23,11 @@ export FABRIC_CFG_PATH="$ROOT/fabric/config"
 echo "==> 3/4 Menaikkan jaringan Fabric + chaincode"
 ( cd "$ROOT/fabric" && ./network.sh up )
 
-echo "==> 4/4 Menaikkan SQL Server + backend Go + frontend"
-( cd "$ROOT/deploy" && docker compose -f docker-compose.app.yml up -d --build )
+echo "==> 4/4 Menaikkan aplikasi (backend Go + frontend [+ SQL Server jika lokal])"
+# Pakai RDS? jalankan: COMPOSE_FILE=docker-compose.app-rds.yml bash deploy/up-ec2.sh
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.app.yml}"
+echo "    compose: $COMPOSE_FILE"
+( cd "$ROOT/deploy" && docker compose -f "$COMPOSE_FILE" up -d --build )
 
 echo ""
 echo "✅ BlockAgriChain berjalan di EC2 ini."
