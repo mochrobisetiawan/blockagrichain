@@ -65,6 +65,9 @@ cryptoGen() {
   echo "==> Membangkitkan materi kripto (cryptogen)"
   rm -rf organizations
   cryptogen generate --config=crypto-config.yaml --output=organizations
+  # Backend (container non-root, uid 10001) me-mount organizations:ro dan perlu BACA
+  # identitas (priv_sk dll). cryptogen membuat key mode 600 milik root → beri izin baca.
+  chmod -R a+rX organizations
 }
 
 genGenesis() {
