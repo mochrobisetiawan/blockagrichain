@@ -27,7 +27,12 @@ echo "==> 4/4 Menaikkan aplikasi (backend Go + frontend [+ SQL Server jika lokal
 # Pakai RDS? jalankan: COMPOSE_FILE=docker-compose.app-rds.yml bash deploy/up-ec2.sh
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.app.yml}"
 echo "    compose: $COMPOSE_FILE"
-( cd "$ROOT/deploy" && docker compose -f "$COMPOSE_FILE" up -d --build )
+# Muat rahasia dari deploy/db.env bila ada (DATABASE_URL/JWT_KEY/S3_BUCKET) — cara
+# andal tanpa mengandalkan export shell yang gampang hilang saat lewat sudo/skrip.
+( cd "$ROOT/deploy"
+  ENVFILE=""
+  if [ -f db.env ]; then ENVFILE="--env-file db.env"; echo "    memuat env: deploy/db.env"; fi
+  docker compose $ENVFILE -f "$COMPOSE_FILE" up -d --build )
 
 echo ""
 echo "✅ BlockAgriChain berjalan di EC2 ini."

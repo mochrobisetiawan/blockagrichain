@@ -12,6 +12,8 @@ dist/
 .claude/
 appsettings.*.local.json
 .env
+deploy/db.env
+*.env
 
 # Fabric artefak hasil generate (jangan commit materi kripto & blok)
 fabric/organizations/
