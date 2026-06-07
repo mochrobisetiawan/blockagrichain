@@ -1,0 +1,16 @@
+# Normalisasi akhir baris. Skrip shell WAJIB LF agar jalan di Linux/EC2.
+* text=auto eol=lf
+*.sh text eol=lf
+network.sh text eol=lf
+
+# File biner — jangan diutak-atik git.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg text
+*.ico binary
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.xlsx binary

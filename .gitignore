@@ -1,0 +1,26 @@
+# .NET
+bin/
+obj/
+*.user
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Env / local
+.claude/
+appsettings.*.local.json
+.env
+
+# Fabric artefak hasil generate (jangan commit materi kripto & blok)
+fabric/organizations/
+fabric/channel-artifacts/
+fabric/*.tar.gz
+fabric/.ccpackageid
+fabric/bin/
+fabric/config/
+
+# Go
+backend-go/server
+*.test

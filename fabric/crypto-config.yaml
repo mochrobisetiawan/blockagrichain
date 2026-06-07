@@ -1,0 +1,59 @@
+# Konfigurasi cryptogen — membangkitkan materi kripto X.509/MSP untuk seluruh org.
+# Domain DNS di sini SAMA dengan nama service di docker-compose & AWS Cloud Map,
+# sehingga sertifikat TLS valid baik di lokal maupun di ECS Fargate.
+#
+#   cryptogen generate --config=crypto-config.yaml --output=organizations
+
+OrdererOrgs:
+  - Name: Orderer
+    Domain: blockagri.id
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer        # orderer.blockagri.id
+        SANS: ["localhost", "orderer.blockagri.id"]
+
+PeerOrgs:
+  - Name: Petani
+    Domain: petani.blockagri.id
+    EnableNodeOUs: true
+    Template:
+      Count: 1                   # peer0.petani.blockagri.id
+      SANS: ["localhost"]
+    Users:
+      Count: 1
+
+  - Name: Bulog
+    Domain: bulog.blockagri.id
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS: ["localhost"]
+    Users:
+      Count: 1
+
+  - Name: Kementan
+    Domain: kementan.blockagri.id
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS: ["localhost"]
+    Users:
+      Count: 1
+
+  - Name: Kemenkeu
+    Domain: kemenkeu.blockagri.id
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS: ["localhost"]
+    Users:
+      Count: 1
+
+  - Name: PIHC
+    Domain: pihc.blockagri.id
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS: ["localhost"]
+    Users:
+      Count: 1

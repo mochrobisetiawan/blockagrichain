@@ -1,0 +1,28 @@
+{
+  "family": "blockagri-chaincode",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT>:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "chaincode",
+      "image": "<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/blockagri/chaincode:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 9999, "protocol": "tcp" }],
+      "environment": [
+        { "name": "CHAINCODE_SERVER_ADDRESS", "value": "0.0.0.0:9999" },
+        { "name": "CHAINCODE_ID", "value": "<PACKAGE_ID dari peer lifecycle calculatepackageid>" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/blockagri-chaincode",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "cc"
+        }
+      }
+    }
+  ]
+}

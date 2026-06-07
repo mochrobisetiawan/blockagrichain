@@ -1,0 +1,64 @@
+# Lapisan aplikasi: Postgres + backend Go + frontend.
+# Menyambung ke jaringan 'blockagri' yang dibuat oleh ../fabric/network.sh up,
+# sehingga backend bisa memanggil peer via nama DNS container.
+#
+#   (1) cd ../fabric && ./network.sh up
+#   (2) docker compose -f docker-compose.app.yml up -d --build
+#   Frontend: http://localhost:8081   API: http://localhost:8080
+
+networks:
+  blockagri:
+    external: true   # dibuat oleh fabric/network.sh
+
+volumes:
+  mssqldata:
+
+services:
+  # RDBMS off-chain = SQL Server (sesuai DPPL).
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Blockagri_Strong!Pass1"
+      MSSQL_PID: "Developer"
+    volumes: [mssqldata:/var/opt/mssql]
+    ports: ["1433:1433"]
+    networks: [blockagri]
+
+  backend:
+    build: ../backend-go
+    depends_on: [mssql]
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "sqlserver://sa:Blockagri_Strong!Pass1@mssql:1433?database=blockagri&encrypt=disable"
+      JWT_KEY: "ganti-rahasia-ini-di-produksi-minimal-32-karakter"
+      CORS_ORIGINS: "http://localhost:8081,http://localhost:5173"
+      FABRIC_CHANNEL: "blockagri"
+      FABRIC_CHAINCODE: "blockagri"
+      FABRIC_CRYPTO_PATH: "/fabric/organizations"
+      # Object storage off-chain (S3). Diteruskan dari shell host (export dulu).
+      # Kosong = fitur unggah nonaktif (klien pakai URL manual).
+      S3_BUCKET: "${S3_BUCKET:-}"
+      S3_REGION: "${S3_REGION:-ap-southeast-1}"
+      S3_ENDPOINT: "${S3_ENDPOINT:-}"
+      S3_PUBLIC_BASE_URL: "${S3_PUBLIC_BASE_URL:-}"
+      # Kredensial: pakai IAM role EC2 (disarankan). Untuk uji manual, bisa set:
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+      AWS_REGION: "${S3_REGION:-ap-southeast-1}"
+      FABRIC_PETANI_PEER: "peer0.petani.blockagri.id:7051"
+      FABRIC_BULOG_PEER: "peer0.bulog.blockagri.id:8051"
+      FABRIC_KEMENTAN_PEER: "peer0.kementan.blockagri.id:9051"
+      FABRIC_KEMENKEU_PEER: "peer0.kemenkeu.blockagri.id:10051"
+      FABRIC_PIHC_PEER: "peer0.pihc.blockagri.id:11051"
+    volumes:
+      # Materi kripto (identitas + TLS CA) hasil cryptogen — read-only.
+      - ../fabric/organizations:/fabric/organizations:ro
+    ports: ["8080:8080"]
+    networks: [blockagri]
+
+  frontend:
+    build: ../frontend
+    depends_on: [backend]
+    ports: ["8081:80"]
+    networks: [blockagri]

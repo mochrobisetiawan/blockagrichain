@@ -1,0 +1,52 @@
+{
+  "family": "blockagri-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT>:role/blockagriTaskRole",
+  "volumes": [
+    {
+      "name": "fabric-crypto",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "<EFS_ID>",
+        "rootDirectory": "/organizations",
+        "transitEncryption": "ENABLED"
+      }
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/blockagri/backend:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "mountPoints": [
+        { "sourceVolume": "fabric-crypto", "containerPath": "/fabric/organizations", "readOnly": true }
+      ],
+      "environment": [
+        { "name": "PORT", "value": "8080" },
+        { "name": "DATABASE_URL", "value": "sqlserver://sa:<PWD>@<RDS_ENDPOINT>:1433?database=blockagri&encrypt=true" },
+        { "name": "JWT_KEY", "value": "<RAHASIA_32CHAR>" },
+        { "name": "CORS_ORIGINS", "value": "https://<DOMAIN_FRONTEND>" },
+        { "name": "FABRIC_CHANNEL", "value": "blockagri" },
+        { "name": "FABRIC_CHAINCODE", "value": "blockagri" },
+        { "name": "FABRIC_CRYPTO_PATH", "value": "/fabric/organizations" },
+        { "name": "FABRIC_PETANI_PEER", "value": "peer0.petani.blockagri.id:7051" },
+        { "name": "FABRIC_BULOG_PEER", "value": "peer0.bulog.blockagri.id:8051" },
+        { "name": "FABRIC_KEMENTAN_PEER", "value": "peer0.kementan.blockagri.id:9051" },
+        { "name": "FABRIC_KEMENKEU_PEER", "value": "peer0.kemenkeu.blockagri.id:10051" },
+        { "name": "FABRIC_PIHC_PEER", "value": "peer0.pihc.blockagri.id:11051" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/blockagri-backend",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "backend"
+        }
+      }
+    }
+  ]
+}

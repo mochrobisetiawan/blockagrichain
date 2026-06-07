@@ -1,0 +1,24 @@
+{
+  "family": "blockagri-frontend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT>:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "frontend",
+      "image": "<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/blockagri/frontend:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 80, "protocol": "tcp" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/blockagri-frontend",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "fe"
+        }
+      }
+    }
+  ]
+}

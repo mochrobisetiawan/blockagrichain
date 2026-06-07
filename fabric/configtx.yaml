@@ -1,0 +1,149 @@
+# configtx.yaml — definisi channel BlockAgriChain (Fabric 2.5, channel participation / tanpa system channel).
+#
+#   configtxgen -profile BlockAgriChannel -channelID blockagri \
+#       -outputBlock ./channel-artifacts/blockagri.block
+#
+# Konsensus: EtcdRaft (CFT) sesuai DPPL. Validator: Kementan, Bulog, PIHC.
+
+---
+Organizations:
+  - &Orderer
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/blockagri.id/msp
+    Policies:
+      Readers:   { Type: Signature, Rule: "OR('OrdererMSP.member')" }
+      Writers:   { Type: Signature, Rule: "OR('OrdererMSP.member')" }
+      Admins:    { Type: Signature, Rule: "OR('OrdererMSP.admin')" }
+    OrdererEndpoints:
+      - orderer.blockagri.id:7050
+
+  - &Petani
+    Name: PetaniMSP
+    ID: PetaniMSP
+    MSPDir: ../organizations/peerOrganizations/petani.blockagri.id/msp
+    Policies:
+      Readers:   { Type: Signature, Rule: "OR('PetaniMSP.admin','PetaniMSP.peer','PetaniMSP.client')" }
+      Writers:   { Type: Signature, Rule: "OR('PetaniMSP.admin','PetaniMSP.client')" }
+      Admins:    { Type: Signature, Rule: "OR('PetaniMSP.admin')" }
+      Endorsement: { Type: Signature, Rule: "OR('PetaniMSP.peer')" }
+    AnchorPeers:
+      - { Host: peer0.petani.blockagri.id, Port: 7051 }
+
+  - &Bulog
+    Name: BulogMSP
+    ID: BulogMSP
+    MSPDir: ../organizations/peerOrganizations/bulog.blockagri.id/msp
+    Policies:
+      Readers:   { Type: Signature, Rule: "OR('BulogMSP.admin','BulogMSP.peer','BulogMSP.client')" }
+      Writers:   { Type: Signature, Rule: "OR('BulogMSP.admin','BulogMSP.client')" }
+      Admins:    { Type: Signature, Rule: "OR('BulogMSP.admin')" }
+      Endorsement: { Type: Signature, Rule: "OR('BulogMSP.peer')" }
+    AnchorPeers:
+      - { Host: peer0.bulog.blockagri.id, Port: 8051 }
+
+  - &Kementan
+    Name: KementanMSP
+    ID: KementanMSP
+    MSPDir: ../organizations/peerOrganizations/kementan.blockagri.id/msp
+    Policies:
+      Readers:   { Type: Signature, Rule: "OR('KementanMSP.admin','KementanMSP.peer','KementanMSP.client')" }
+      Writers:   { Type: Signature, Rule: "OR('KementanMSP.admin','KementanMSP.client')" }
+      Admins:    { Type: Signature, Rule: "OR('KementanMSP.admin')" }
+      Endorsement: { Type: Signature, Rule: "OR('KementanMSP.peer')" }
+    AnchorPeers:
+      - { Host: peer0.kementan.blockagri.id, Port: 9051 }
+
+  - &Kemenkeu
+    Name: KemenkeuMSP
+    ID: KemenkeuMSP
+    MSPDir: ../organizations/peerOrganizations/kemenkeu.blockagri.id/msp
+    Policies:
+      Readers:   { Type: Signature, Rule: "OR('KemenkeuMSP.admin','KemenkeuMSP.peer','KemenkeuMSP.client')" }
+      Writers:   { Type: Signature, Rule: "OR('KemenkeuMSP.admin','KemenkeuMSP.client')" }
+      Admins:    { Type: Signature, Rule: "OR('KemenkeuMSP.admin')" }
+      Endorsement: { Type: Signature, Rule: "OR('KemenkeuMSP.peer')" }
+    AnchorPeers:
+      - { Host: peer0.kemenkeu.blockagri.id, Port: 10051 }
+
+  - &PIHC
+    Name: PIHCMSP
+    ID: PIHCMSP
+    MSPDir: ../organizations/peerOrganizations/pihc.blockagri.id/msp
+    Policies:
+      Readers:   { Type: Signature, Rule: "OR('PIHCMSP.admin','PIHCMSP.peer','PIHCMSP.client')" }
+      Writers:   { Type: Signature, Rule: "OR('PIHCMSP.admin','PIHCMSP.client')" }
+      Admins:    { Type: Signature, Rule: "OR('PIHCMSP.admin')" }
+      Endorsement: { Type: Signature, Rule: "OR('PIHCMSP.peer')" }
+    AnchorPeers:
+      - { Host: peer0.pihc.blockagri.id, Port: 11051 }
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:     { Type: ImplicitMeta, Rule: "ANY Readers" }
+    Writers:     { Type: ImplicitMeta, Rule: "ANY Writers" }
+    Admins:      { Type: ImplicitMeta, Rule: "MAJORITY Admins" }
+    LifecycleEndorsement: { Type: ImplicitMeta, Rule: "MAJORITY Endorsement" }
+    Endorsement:          { Type: ImplicitMeta, Rule: "MAJORITY Endorsement" }
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.blockagri.id
+        Port: 7050
+        ClientTLSCert: ../organizations/ordererOrganizations/blockagri.id/orderers/orderer.blockagri.id/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/blockagri.id/orderers/orderer.blockagri.id/tls/server.crt
+  Addresses:
+    - orderer.blockagri.id:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers:         { Type: ImplicitMeta, Rule: "ANY Readers" }
+    Writers:         { Type: ImplicitMeta, Rule: "ANY Writers" }
+    Admins:          { Type: ImplicitMeta, Rule: "MAJORITY Admins" }
+    BlockValidation: { Type: ImplicitMeta, Rule: "ANY Writers" }
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers: { Type: ImplicitMeta, Rule: "ANY Readers" }
+    Writers: { Type: ImplicitMeta, Rule: "ANY Writers" }
+    Admins:  { Type: ImplicitMeta, Rule: "MAJORITY Admins" }
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  # Profil channel aplikasi tunggal "blockagri" — semua 5 org sebagai member.
+  BlockAgriChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *Orderer
+      Capabilities: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Petani
+        - *Bulog
+        - *Kementan
+        - *Kemenkeu
+        - *PIHC
+      Capabilities: *ApplicationCapabilities
