@@ -17,6 +17,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
+# Perintah `peer`/`osnadmin` butuh core.yaml di FABRIC_CFG_PATH (default: fabric/config
+# hasil install-fabric). `configtxgen` butuh configtx.yaml dan di-set INLINE ke $ROOT
+# (lihat genGenesis/packageCC) agar tidak menimpa nilai ini.
+export FABRIC_CFG_PATH="${FABRIC_CFG_PATH:-$ROOT/config}"
+
 CHANNEL="blockagri"
 CC_NAME="blockagri"
 CC_LABEL="blockagri_1.0"
@@ -64,9 +69,8 @@ cryptoGen() {
 
 genGenesis() {
   echo "==> Membangkitkan genesis block channel '${CHANNEL}'"
-  export FABRIC_CFG_PATH="$ROOT"
   mkdir -p channel-artifacts
-  configtxgen -profile BlockAgriChannel -channelID "$CHANNEL" \
+  FABRIC_CFG_PATH="$ROOT" configtxgen -profile BlockAgriChannel -channelID "$CHANNEL" \
     -outputBlock "./channel-artifacts/${CHANNEL}.block"
 }
 
@@ -103,7 +107,6 @@ packageCC() {
     tar czf code.tar.gz connection.json
     tar czf "../${CC_NAME}.tar.gz" metadata.json code.tar.gz
     rm -f code.tar.gz )
-  export FABRIC_CFG_PATH="$ROOT"
   PKG_ID=$(peer lifecycle chaincode calculatepackageid "${CC_NAME}.tar.gz")
   echo "    Package ID = ${PKG_ID}"
   echo "$PKG_ID" > .ccpackageid
