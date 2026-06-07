@@ -10,7 +10,7 @@ Organizations:
   - &Orderer
     Name: OrdererMSP
     ID: OrdererMSP
-    MSPDir: ../organizations/ordererOrganizations/blockagri.id/msp
+    MSPDir: organizations/ordererOrganizations/blockagri.id/msp
     Policies:
       Readers:   { Type: Signature, Rule: "OR('OrdererMSP.member')" }
       Writers:   { Type: Signature, Rule: "OR('OrdererMSP.member')" }
@@ -21,7 +21,7 @@ Organizations:
   - &Petani
     Name: PetaniMSP
     ID: PetaniMSP
-    MSPDir: ../organizations/peerOrganizations/petani.blockagri.id/msp
+    MSPDir: organizations/peerOrganizations/petani.blockagri.id/msp
     Policies:
       Readers:   { Type: Signature, Rule: "OR('PetaniMSP.admin','PetaniMSP.peer','PetaniMSP.client')" }
       Writers:   { Type: Signature, Rule: "OR('PetaniMSP.admin','PetaniMSP.client')" }
@@ -33,7 +33,7 @@ Organizations:
   - &Bulog
     Name: BulogMSP
     ID: BulogMSP
-    MSPDir: ../organizations/peerOrganizations/bulog.blockagri.id/msp
+    MSPDir: organizations/peerOrganizations/bulog.blockagri.id/msp
     Policies:
       Readers:   { Type: Signature, Rule: "OR('BulogMSP.admin','BulogMSP.peer','BulogMSP.client')" }
       Writers:   { Type: Signature, Rule: "OR('BulogMSP.admin','BulogMSP.client')" }
@@ -45,7 +45,7 @@ Organizations:
   - &Kementan
     Name: KementanMSP
     ID: KementanMSP
-    MSPDir: ../organizations/peerOrganizations/kementan.blockagri.id/msp
+    MSPDir: organizations/peerOrganizations/kementan.blockagri.id/msp
     Policies:
       Readers:   { Type: Signature, Rule: "OR('KementanMSP.admin','KementanMSP.peer','KementanMSP.client')" }
       Writers:   { Type: Signature, Rule: "OR('KementanMSP.admin','KementanMSP.client')" }
@@ -57,7 +57,7 @@ Organizations:
   - &Kemenkeu
     Name: KemenkeuMSP
     ID: KemenkeuMSP
-    MSPDir: ../organizations/peerOrganizations/kemenkeu.blockagri.id/msp
+    MSPDir: organizations/peerOrganizations/kemenkeu.blockagri.id/msp
     Policies:
       Readers:   { Type: Signature, Rule: "OR('KemenkeuMSP.admin','KemenkeuMSP.peer','KemenkeuMSP.client')" }
       Writers:   { Type: Signature, Rule: "OR('KemenkeuMSP.admin','KemenkeuMSP.client')" }
@@ -69,7 +69,7 @@ Organizations:
   - &PIHC
     Name: PIHCMSP
     ID: PIHCMSP
-    MSPDir: ../organizations/peerOrganizations/pihc.blockagri.id/msp
+    MSPDir: organizations/peerOrganizations/pihc.blockagri.id/msp
     Policies:
       Readers:   { Type: Signature, Rule: "OR('PIHCMSP.admin','PIHCMSP.peer','PIHCMSP.client')" }
       Writers:   { Type: Signature, Rule: "OR('PIHCMSP.admin','PIHCMSP.client')" }
@@ -103,8 +103,8 @@ Orderer: &OrdererDefaults
     Consenters:
       - Host: orderer.blockagri.id
         Port: 7050
-        ClientTLSCert: ../organizations/ordererOrganizations/blockagri.id/orderers/orderer.blockagri.id/tls/server.crt
-        ServerTLSCert: ../organizations/ordererOrganizations/blockagri.id/orderers/orderer.blockagri.id/tls/server.crt
+        ClientTLSCert: organizations/ordererOrganizations/blockagri.id/orderers/orderer.blockagri.id/tls/server.crt
+        ServerTLSCert: organizations/ordererOrganizations/blockagri.id/orderers/orderer.blockagri.id/tls/server.crt
   Addresses:
     - orderer.blockagri.id:7050
   BatchTimeout: 2s
