@@ -1,9 +1,13 @@
 package config
 
 import (
+	"context"
+	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"blockagrichain/backend/internal/secrets"
 )
 
 // Config — seluruh konfigurasi runtime dari environment (12-factor, cocok untuk Fargate).
@@ -27,6 +31,10 @@ type Config struct {
 	S3Region        string
 	S3Endpoint      string // kosong = AWS S3; isi untuk MinIO / endpoint kustom
 	S3PublicBaseURL string // opsional override base URL publik object
+
+	// AWS Secrets Manager — name/ARN secret berisi JSON rahasia (DSN DB, JWT, dll).
+	// Bila di-set, nilai dari secret menimpa env/default. Pakai IAM role (tanpa .env).
+	AWSSecretID string
 
 	// Endpoint peer gateway per org (di Fargate = nama AWS Cloud Map).
 	PeerEndpoints map[string]string
@@ -62,6 +70,8 @@ func Load() *Config {
 		S3Endpoint:      get("S3_ENDPOINT", ""),
 		S3PublicBaseURL: get("S3_PUBLIC_BASE_URL", ""),
 
+		AWSSecretID: get("AWS_SECRET_ID", get("SECRETS_MANAGER_ID", "")),
+
 		// Default = port docker-compose lokal; override via env saat di Fargate.
 		PeerEndpoints: map[string]string{
 			"PetaniMSP":   get("FABRIC_PETANI_PEER", "localhost:7051"),
@@ -71,5 +81,40 @@ func Load() *Config {
 			"PIHCMSP":     get("FABRIC_PIHC_PEER", "localhost:11051"),
 		},
 	}
+
+	// Timpa nilai sensitif dari AWS Secrets Manager bila dikonfigurasi.
+	c.applySecrets()
 	return c
+}
+
+// applySecrets — ambil JSON rahasia dari AWS Secrets Manager dan timpa field
+// yang cocok. Gagal memuat tidak fatal (fallback ke env/default) supaya dev lokal
+// (tanpa AWS) tetap jalan.
+func (c *Config) applySecrets() {
+	if c.AWSSecretID == "" {
+		return
+	}
+	m, err := secrets.Fetch(context.Background(), c.S3Region, c.AWSSecretID)
+	if err != nil {
+		log.Printf("⚠️  AWS Secrets Manager (%s) gagal dimuat: %v — memakai env/default", c.AWSSecretID, err)
+		return
+	}
+	setIf(m, "DATABASE_URL", &c.DatabaseURL)
+	setIf(m, "JWT_KEY", &c.JWTKey)
+	setIf(m, "JWT_ISSUER", &c.JWTIssuer)
+	setIf(m, "JWT_AUDIENCE", &c.JWTAudience)
+	setIf(m, "S3_BUCKET", &c.S3Bucket)
+	setIf(m, "S3_REGION", &c.S3Region)
+	setIf(m, "S3_ENDPOINT", &c.S3Endpoint)
+	setIf(m, "S3_PUBLIC_BASE_URL", &c.S3PublicBaseURL)
+	if v, ok := m["CORS_ORIGINS"]; ok && v != "" {
+		c.CorsOrigins = strings.Split(v, ",")
+	}
+	log.Printf("🔐 Memuat %d rahasia dari AWS Secrets Manager (%s)", len(m), c.AWSSecretID)
+}
+
+func setIf(m map[string]string, key string, dst *string) {
+	if v, ok := m[key]; ok && v != "" {
+		*dst = v
+	}
 }

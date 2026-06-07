@@ -46,6 +46,29 @@ SQL Server jalan sebagai container di host yang sama.
    `S3_BUCKET` kosong → fitur unggah nonaktif & UI memakai URL manual (alur tetap sesuai DPPL).
    Endpoint backend: `POST /api/uploads/presign` → `{ uploadUrl, objectUrl }`.
 
+## Rahasia via AWS Secrets Manager (disarankan, tanpa .env)
+Backend membaca rahasia dari Secrets Manager bila `AWS_SECRET_ID` di-set — nilai dari
+secret **menimpa** env. Cocok dipakai bersama **RDS for SQL Server** (DB terkelola).
+1. **Buat secret** (tipe *Other / plaintext*), isi JSON:
+   ```json
+   {
+     "DATABASE_URL": "sqlserver://app:STRONGPASS@blockagri.xxxx.ap-southeast-1.rds.amazonaws.com:1433?database=blockagri&encrypt=true",
+     "JWT_KEY": "rahasia-kuat-minimal-32-karakter",
+     "S3_BUCKET": "blockagri-uploads"
+   }
+   ```
+2. **IAM role EC2** + izin `secretsmanager:GetSecretValue` pada ARN secret tsb.
+3. **Jalankan** dengan menunjuk secret:
+   ```bash
+   export AWS_SECRET_ID=blockagri/app   # nama atau ARN
+   export AWS_REGION=ap-southeast-1
+   docker compose -f deploy/docker-compose.app.yml up -d --build
+   ```
+   > Jika pakai **RDS**, hapus service `mssql` dari compose & arahkan `DATABASE_URL` (di secret) ke RDS.
+   > Untuk SQL Server container, password SA-nya tetap di-set host:
+   > `export MSSQL_SA_PASSWORD=$(aws secretsmanager get-secret-value --secret-id blockagri/db --query SecretString --output text)`.
+   `AWS_SECRET_ID` kosong → backend memakai env biasa (fallback dev lokal).
+
 ## 1. Siapkan EC2
 - **AMI**: Ubuntu 22.04/24.04. **Tipe**: minimal `t3.large` (2 vCPU/8 GB) — Fabric + SQL Server cukup berat.
 - **Storage**: ≥ 30 GB.

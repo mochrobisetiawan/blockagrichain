@@ -30,6 +30,10 @@ services:
     depends_on: [mssql]
     environment:
       PORT: "8080"
+      # === AWS Secrets Manager (disarankan): set AWS_SECRET_ID → menimpa DATABASE_URL/JWT_KEY/S3_* ===
+      AWS_SECRET_ID: "${AWS_SECRET_ID:-}"
+      AWS_REGION: "${AWS_REGION:-ap-southeast-1}"
+      # Fallback bila AWS_SECRET_ID kosong (dev lokal / SQL Server container):
       DATABASE_URL: "sqlserver://sa:Blockagri_Strong!Pass1@mssql:1433?database=blockagri&encrypt=disable"
       JWT_KEY: "ganti-rahasia-ini-di-produksi-minimal-32-karakter"
       CORS_ORIGINS: "http://localhost:8081,http://localhost:5173"
