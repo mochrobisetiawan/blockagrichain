@@ -43,8 +43,11 @@ func ensureDatabase(dsn string) error {
 
 // Open — koneksi SQL Server (RDBMS off-chain sesuai DPPL) + AutoMigrate seluruh tabel.
 func Open(cfg *config.Config) (*gorm.DB, error) {
+	// Coba buat database bila belum ada. Di RDS terkelola, login sering TIDAK punya
+	// izin CREATE DATABASE / akses ke 'master' — itu OK selama database target sudah
+	// disiapkan DBA. Jadi kegagalan di sini hanya peringatan, bukan fatal.
 	if err := ensureDatabase(cfg.DatabaseURL); err != nil {
-		return nil, fmt.Errorf("gagal memastikan database: %w", err)
+		log.Printf("⚠️  Lewati pembuatan database (asumsikan sudah ada): %v", err)
 	}
 	db, err := gorm.Open(sqlserver.Open(cfg.DatabaseURL), &gorm.Config{})
 	if err != nil {
