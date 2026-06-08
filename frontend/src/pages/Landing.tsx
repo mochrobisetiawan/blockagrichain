@@ -102,14 +102,114 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Tech pills */}
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '0 24px 60px', display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+      {/* Band statistik nyata */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,.08)', borderBottom: '1px solid rgba(255,255,255,.08)', background: 'rgba(0,0,0,.18)' }}>
+        <div className="lp-stats" style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+          {[
+            { l: 'Petani Terdaftar', v: net ? fmt(net.stats.farmers) : '—' },
+            { l: 'Total Panen', v: net ? fmt(net.stats.harvests) : '—' },
+            { l: 'Panen Terverifikasi', v: net ? fmt(net.stats.verified) : '—' },
+            { l: 'Tinggi Blok', v: net ? '#' + fmt(net.blockHeight) : '—' },
+          ].map(s => (
+            <div key={s.l} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 800, color: '#86efac', fontFamily: 'monospace' }}>{s.v}</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', fontWeight: 600, marginTop: 4 }}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section terang: Cara Kerja + Fitur + Peran */}
+      <div style={{ background: '#f6faf8', color: '#0c2b1a' }}>
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '74px 24px' }}>
+
+          {/* Cara Kerja */}
+          <div style={{ textAlign: 'center', marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.5, color: '#1a5e38', textTransform: 'uppercase' }}>Alur Sistem</div>
+            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: -.8, margin: '8px 0 0' }}>Dari panen sampai pencairan subsidi</h2>
+          </div>
+          <div className="lp-flow" style={{ display: 'flex', alignItems: 'stretch', gap: 0, margin: '34px 0 12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {[
+              { i: '🌾', t: 'Lapor Panen', d: 'Petani' }, { i: '⚖️', t: 'Verifikasi + IoT', d: 'Bulog' },
+              { i: '🧮', t: 'Alokasi Otomatis', d: 'On-chain' }, { i: '🚚', t: 'Distribusi', d: 'PIHC' },
+              { i: '📦', t: 'Diterima', d: 'Petani' }, { i: '🧾', t: 'Klaim Subsidi', d: 'PIHC' },
+              { i: '💰', t: 'Pencairan', d: 'Kemenkeu' },
+            ].map((s, i, arr) => (
+              <div key={s.t} style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ width: 110, textAlign: 'center', padding: '0 4px' }}>
+                  <div style={{ width: 54, height: 54, margin: '0 auto', borderRadius: 15, background: '#fff', border: '1px solid #d6e6dc', display: 'grid', placeItems: 'center', fontSize: 24, boxShadow: '0 6px 16px rgba(26,94,56,.08)' }}>{s.i}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 9 }}>{s.t}</div>
+                  <div style={{ fontSize: 10.5, color: '#5b7a68', fontWeight: 600 }}>{s.d}</div>
+                </div>
+                {i < arr.length - 1 && <div style={{ width: 22, height: 2, background: '#bcd6c6' }} className="lp-flow-arrow" />}
+              </div>
+            ))}
+          </div>
+
+          {/* Fitur Utama */}
+          <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: -.6, textAlign: 'center', margin: '64px 0 6px' }}>Kenapa BlockAgriChain?</h2>
+          <p style={{ textAlign: 'center', color: '#5b7a68', fontSize: 15, margin: '0 0 34px' }}>Transparansi & akuntabilitas penyaluran pupuk bersubsidi di atas blockchain.</p>
+          <div className="lp-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18 }}>
+            {[
+              { i: '🔗', t: 'Ledger Immutable', d: 'Setiap transaksi tercatat permanen di Hyperledger Fabric — tidak dapat diubah atau dihapus.' },
+              { i: '⚖️', t: 'IoT Smart Scale', d: 'Berat panen dibaca otomatis dari timbangan ESP32-CAM lalu OCR di server, mengurangi kecurangan.' },
+              { i: '🔒', t: 'Privasi Off-Chain', d: 'Data pribadi & foto disimpan di SQL Server / Amazon S3; hanya hash SHA-256 yang masuk ledger.' },
+              { i: '🏛️', t: 'Multi-Instansi', d: '5 organisasi (Petani, Bulog, Kementan, Kemenkeu, PIHC) dengan identitas X.509 terpisah.' },
+              { i: '📜', t: 'Kebijakan Transparan', d: 'Formula subsidi diusulkan Kementan & disetujui Kemenkeu, lalu berlaku otomatis di chaincode.' },
+              { i: '🛡️', t: 'Audit & Integritas', d: 'Auditor dapat memverifikasi keutuhan rantai blok kapan saja melalui Audit Trail.' },
+            ].map(f => (
+              <div key={f.t} style={{ background: '#fff', borderRadius: 16, padding: '22px 20px', border: '1px solid #e3eee8' }}>
+                <div style={{ fontSize: 26 }}>{f.i}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, margin: '10px 0 6px' }}>{f.t}</div>
+                <div style={{ fontSize: 13.5, color: '#52715f', lineHeight: 1.6 }}>{f.d}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Peran dalam Jaringan */}
+          <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: -.6, textAlign: 'center', margin: '64px 0 34px' }}>Peran dalam Jaringan</h2>
+          <div className="lp-roles" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
+            {[
+              { i: '👨‍🌾', t: 'Petani', d: 'Lapor panen & terima pupuk' },
+              { i: '🏬', t: 'Bulog', d: 'Verifikasi fisik panen (IoT)' },
+              { i: '🌾', t: 'Kementan', d: 'Formula subsidi & data petani' },
+              { i: '💰', t: 'Kemenkeu', d: 'Setujui anggaran & pencairan' },
+              { i: '🚚', t: 'PIHC', d: 'Distribusi pupuk ke petani' },
+            ].map(rl => (
+              <div key={rl.t} style={{ background: '#fff', borderRadius: 14, padding: '18px 14px', border: '1px solid #e3eee8', textAlign: 'center' }}>
+                <div style={{ fontSize: 28 }}>{rl.i}</div>
+                <div style={{ fontSize: 14.5, fontWeight: 800, margin: '8px 0 4px' }}>{rl.t}</div>
+                <div style={{ fontSize: 11.5, color: '#52715f', lineHeight: 1.5 }}>{rl.d}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA bawah */}
+          <div style={{ textAlign: 'center', marginTop: 56 }}>
+            <button onClick={() => nav('/login')} style={{ background: 'linear-gradient(150deg,#2d9b5f,#1a5e38)', color: '#fff', border: 'none', borderRadius: 13, padding: '15px 30px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 28px rgba(26,94,56,.25)' }}>Masuk ke Sistem →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tech pills + footer */}
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '46px 24px 18px', display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
         {['Hyperledger Fabric', 'X.509 MSP', 'CouchDB', 'IoT ESP32-CAM', 'SHA-256', 'SQL Server', 'Amazon S3'].map(t => (
           <span key={t} style={{ background: 'rgba(255,255,255,.08)', borderRadius: 20, padding: '6px 15px', fontSize: 11.5, fontWeight: 700, color: 'rgba(255,255,255,.85)' }}>{t}</span>
         ))}
       </div>
+      <div style={{ textAlign: 'center', padding: '14px 24px 40px', fontSize: 12, color: 'rgba(255,255,255,.4)' }}>
+        © 2026 BlockAgriChain · Blockchain Penyaluran Pupuk Bersubsidi
+      </div>
 
-      <style>{`@media(max-width:820px){.lp-grid{grid-template-columns:1fr!important;gap:36px!important;padding-top:40px!important}}`}</style>
+      <style>{`
+        @media(max-width:820px){
+          .lp-grid{grid-template-columns:1fr!important;gap:36px!important;padding-top:40px!important}
+          .lp-stats{grid-template-columns:1fr 1fr!important;gap:26px!important}
+          .lp-cards{grid-template-columns:1fr!important}
+          .lp-roles{grid-template-columns:1fr 1fr!important}
+          .lp-flow-arrow{display:none!important}
+        }
+      `}</style>
     </div>
   )
 }
