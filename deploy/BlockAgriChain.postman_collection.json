@@ -98,7 +98,32 @@
       }
     },
     {
-      "name": "5. IoT — Lihat Gambar (Bulog)",
+      "name": "5. IoT (Value) — Kirim Berat Langsung",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Device-Id", "value": "{{deviceId}}" },
+          { "key": "X-IoT-Key", "value": "{{iotKey}}", "disabled": true }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "harvestChainId", "value": "{{harvestChainId}}", "type": "text" },
+            { "key": "deviceId", "value": "{{deviceId}}", "type": "text" },
+            { "key": "ocrWeight", "value": "1000", "type": "text" },
+            { "key": "image", "type": "file", "src": "", "disabled": true }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/iot-value/weight",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "iot-value", "weight"]
+        },
+        "description": "Kirim BERAT langsung tanpa OCR. Field 'ocrWeight' (kg) WAJIB. 'image' OPSIONAL (aktifkan bila mau lampirkan bukti foto). Mewarisi Bearer {{token}}."
+      }
+    },
+    {
+      "name": "6. IoT — Lihat Gambar (Bulog)",
       "request": {
         "method": "GET",
         "header": [],
