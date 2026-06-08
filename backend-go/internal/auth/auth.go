@@ -92,6 +92,10 @@ func (s *Service) parse(tokenStr string) (*Principal, error) {
 	}, nil
 }
 
+// Verify — verifikasi token Bearer di luar middleware (mis. endpoint IoT yang
+// juga boleh dipanggil perangkat). Mengembalikan Principal bila token sah.
+func (s *Service) Verify(tokenStr string) (*Principal, error) { return s.parse(tokenStr) }
+
 // Middleware — wajib JWT valid. Menaruh Principal ke context.
 func (s *Service) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

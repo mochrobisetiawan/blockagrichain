@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -21,8 +22,15 @@ import (
 // (Tesseract) → berat tersimpan di panen → muncul di layar verifikasi Bulog.
 // Endpoint TIDAK pakai JWT (perangkat ESP), tapi dilindungi X-IoT-Key.
 func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
-	if s.cfg.IoTApiKey != "" && r.Header.Get("X-IoT-Key") != s.cfg.IoTApiKey {
-		s.json(w, http.StatusUnauthorized, map[string]any{"error": "X-IoT-Key salah / tidak ada"})
+	// Otorisasi fleksibel: terima Bearer JWT (login web/Postman) ATAU X-IoT-Key
+	// (perangkat ESP32). Jika header Authorization ada, token wajib sah.
+	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
+		if _, err := s.auth.Verify(strings.TrimPrefix(h, "Bearer ")); err != nil {
+			s.json(w, http.StatusUnauthorized, map[string]any{"error": "Bearer token tidak valid"})
+			return
+		}
+	} else if s.cfg.IoTApiKey != "" && r.Header.Get("X-IoT-Key") != s.cfg.IoTApiKey {
+		s.json(w, http.StatusUnauthorized, map[string]any{"error": "Bearer token atau X-IoT-Key wajib"})
 		return
 	}
 	if err := r.ParseMultipartForm(12 << 20); err != nil {

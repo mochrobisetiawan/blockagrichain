@@ -56,6 +56,7 @@
       "request": {
         "method": "POST",
         "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
           { "key": "X-IoT-Key", "value": "{{iotKey}}", "disabled": true }
         ],
         "body": {
@@ -70,7 +71,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["api", "iot", "weight"]
         },
-        "description": "Body = form-data. Field 'image' bertipe File (pilih foto display timbangan, mis. dari folder OCR Sample). Jika IOT_API_KEY di-set, aktifkan header X-IoT-Key. JANGAN set Content-Type manual."
+        "description": "Body = form-data. Field 'image' bertipe File (pilih foto display timbangan, mis. dari folder OCR Sample). Otorisasi: Bearer token (otomatis dari request Login) ATAU header X-IoT-Key (aktifkan bila IOT_API_KEY di-set). JANGAN set Content-Type manual; cukup kirim SATU field 'image'."
       }
     },
     {
