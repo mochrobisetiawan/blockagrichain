@@ -3,6 +3,7 @@ import { api, fetchObjectUrl, fmt, shortTx, type ChainProof } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
 import { Badge, Empty, useToast } from '../ui'
+import DetailModal from '../components/DetailModal'
 
 const C = { g700: '#1a5e38', g600: '#22773f', blue: '#2563eb', amber: '#d97706', red: '#dc2626' }
 
@@ -130,6 +131,19 @@ export default function Harvests() {
   const isFarmer = user?.role === 'FARMER'
   const { data, loading, reload } = useApi<Harvest[]>(isBulog ? '/harvests/pending' : '/harvests')
   const [modal, setModal] = useState<Harvest | null>(null)
+  const [detail, setDetail] = useState<Harvest | null>(null)
+  const hStage = (st: string) => st === 'VERIFIED' ? 2 : 1
+  const detailModal = detail && (
+    <DetailModal type="HARVEST" id={detail.harvestChainId} stage={hStage(detail.status)}
+      title={`Panen · ${detail.cropType}`} badge={<Badge status={detail.status} />}
+      fields={[
+        { label: 'Komoditas', value: detail.cropType },
+        { label: 'Kuantitas klaim', value: `${fmt(detail.qtyClaimedKg)} kg` },
+        { label: 'Provinsi', value: detail.land?.province ?? '—' },
+        { label: 'Alokasi', value: detail.allocation ? `${detail.allocation.ureaKg}/${detail.allocation.npkKg}/${detail.allocation.organicKg} kg` : '—' },
+      ]}
+      onClose={() => setDetail(null)} />
+  )
 
   /* Bulog — kartu antrian verifikasi */
   if (isBulog) {
@@ -172,7 +186,7 @@ export default function Harvests() {
         {loading && <Empty text="Memuat…" />}
         {!loading && (data?.length ?? 0) === 0 && <Empty text="Belum ada laporan panen." />}
         {data?.map(h => (
-          <div key={h.id} style={{ background: '#fff', borderRadius: 14, padding: 13, marginBottom: 9, border: '1px solid var(--border)' }}>
+          <div key={h.id} onClick={() => setDetail(h)} style={{ background: '#fff', borderRadius: 14, padding: 13, marginBottom: 9, border: '1px solid var(--border)', cursor: 'pointer' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{h.cropType} · {fmt(h.qtyClaimedKg)} kg</div>
               <Badge status={h.status} />
@@ -191,6 +205,7 @@ export default function Harvests() {
             )}
           </div>
         ))}
+        {detailModal}
       </div>
     )
   }
@@ -199,14 +214,14 @@ export default function Harvests() {
   return (
     <div className="fade">
       <h1 className="page-title">Status Panen & Alokasi</h1>
-      <p className="page-sub">Mirror dari immutable ledger blockchain</p>
+      <p className="page-sub">Mirror dari immutable ledger blockchain · klik baris untuk detail</p>
       <div className="card" style={{ marginTop: 18, padding: 0 }}>
         <table>
           <thead><tr><th>ID On-Chain</th><th>Komoditas</th><th>Kuantitas</th><th>Alokasi</th><th>Status</th><th>TxID</th></tr></thead>
           <tbody>
             {loading && <tr><td colSpan={6}><Empty text="Memuat…" /></td></tr>}
             {data?.map(h => (
-              <tr key={h.id}>
+              <tr key={h.id} onClick={() => setDetail(h)} style={{ cursor: 'pointer' }}>
                 <td className="mono">{h.harvestChainId}</td>
                 <td>{h.cropType}<div className="muted" style={{ fontSize: 12 }}>{h.land?.province}</div></td>
                 <td>{fmt(h.qtyClaimedKg)} kg</td>
@@ -218,6 +233,7 @@ export default function Harvests() {
           </tbody>
         </table>
       </div>
+      {detailModal}
     </div>
   )
 }

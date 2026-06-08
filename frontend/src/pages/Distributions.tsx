@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { api, shortTx } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
 import { Badge, Empty, useToast } from '../ui'
+import DetailModal from '../components/DetailModal'
 
 const C = { g700: '#1a5e38', g600: '#22773f', blue: '#2563eb', amber: '#d97706' }
 
@@ -24,6 +26,9 @@ export default function Distributions() {
   const isFarmer = user?.role === 'FARMER'
   const { data: orders, loading, reload } = useApi<Order[]>('/distributions')
   const { data: ready, reload: reloadReady } = useApi<Ready[]>(isPihc ? '/distributions/ready' : null)
+  const [detail, setDetail] = useState<Order | null>(null)
+  const distStage = (o: Order) => o.payment?.status === 'DISBURSED' ? 6 : o.payment?.status === 'REQUESTED' ? 5
+    : (o.status === 'CONFIRMED' || o.status === 'DELIVERED') ? 4 : 3
 
   const wrap = async (fn: () => Promise<unknown>, ok: string) => {
     try { await fn(); toast(ok); reload(); reloadReady() }
@@ -80,7 +85,7 @@ export default function Distributions() {
             <div key={o.id} style={{ background: '#fff', borderRadius: 16, padding: 18, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><Badge status={o.status} /><span style={{ fontSize: 11, color: 'var(--txtS)' }}>{o.scheduledDate ?? ''}</span></div>
               <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>{o.farmer?.fullName ?? '—'}</div>
-              <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--txtS)', marginBottom: 12 }}>{o.distributionChainId} · {shortTx(o.blockchainTxId)}</div>
+              <div onClick={() => setDetail(o)} title="Lihat detail & riwayat on-chain" style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--g700)', marginBottom: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>🔍 {o.distributionChainId} · {shortTx(o.blockchainTxId)}</div>
               {tiles(o.allocation)}
               {isPihc && o.status === 'CREATED' && <button className="btn" style={{ width: '100%', justifyContent: 'center' }} onClick={() => ship(o.id)}>Kirim</button>}
               {isPihc && o.status === 'SHIPPED' && <button className="btn" style={{ width: '100%', justifyContent: 'center' }} onClick={() => deliver(o.id)}>Tandai Terkirim</button>}
@@ -91,6 +96,19 @@ export default function Distributions() {
             </div>
           ))}
         </div>
+      )}
+
+      {detail && (
+        <DetailModal type="DIST" id={detail.distributionChainId} stage={distStage(detail)}
+          title={`Distribusi · ${detail.farmer?.fullName ?? ''}`}
+          badge={<Badge status={detail.status} />}
+          fields={[
+            { label: 'Petani', value: detail.farmer?.fullName ?? '—' },
+            { label: 'Jadwal', value: detail.scheduledDate ?? '—' },
+            { label: 'Urea/NPK/Organik', value: detail.allocation ? `${detail.allocation.ureaKg}/${detail.allocation.npkKg}/${detail.allocation.organicKg} kg` : '—' },
+            { label: 'Status klaim', value: detail.payment ? detail.payment.status : '—' },
+          ]}
+          onClose={() => setDetail(null)} />
       )}
     </div>
   )
