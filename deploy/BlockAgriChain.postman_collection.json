@@ -5,7 +5,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://GANTI-DENGAN-DNS-ALB" },
+    { "key": "baseUrl", "value": "https://blockagrichain.digitalisasi-pi.com" },
     { "key": "harvestChainId", "value": "HRV-0001" },
     { "key": "iotKey", "value": "" },
     { "key": "token", "value": "" }
@@ -52,7 +52,20 @@
       }
     },
     {
-      "name": "3. IoT — Kirim Foto Timbangan (OCR)",
+      "name": "3. Daftar Panen (cari harvestChainId)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/harvests",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "harvests"]
+        },
+        "description": "Login dulu (request 2). Lihat field 'harvestChainId' (mis. HRV-0001) untuk dipakai di request IoT."
+      }
+    },
+    {
+      "name": "4. IoT — Kirim Foto Timbangan (OCR)",
       "request": {
         "method": "POST",
         "header": [
@@ -75,7 +88,7 @@
       }
     },
     {
-      "name": "4. IoT — Lihat Gambar (Bulog)",
+      "name": "5. IoT — Lihat Gambar (Bulog)",
       "request": {
         "method": "GET",
         "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
