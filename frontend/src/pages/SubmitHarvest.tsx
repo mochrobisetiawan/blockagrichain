@@ -32,9 +32,9 @@ export default function SubmitHarvest() {
       const url = await uploadToS3('harvest', file) // unggah ke S3 off-chain
       setPhoto(url)
       toast('Foto terunggah ke S3 (off-chain) — hanya hash yang masuk ledger')
-    } catch (ex) {
-      // Fallback: S3 belum dikonfigurasi → biarkan isi URL manual.
-      toast((ex as Error).message + ' — isi URL foto manual sebagai gantinya.', 'error')
+    } catch {
+      toast('Gagal mengunggah foto. Coba lagi.', 'error')
+      setPhotoName('')
     } finally { setUploading(false) }
   }
 
@@ -94,15 +94,10 @@ export default function SubmitHarvest() {
           {uploading && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Mengunggah ke S3…</div>}
           {photo && (
             <div className="chain-proof" style={{ marginTop: 8 }}>
-              ✅ {photoName} → <span className="mono">{photo}</span>
+              ✅ {photoName} terunggah ke penyimpanan off-chain
               <div style={{ marginTop: 4 }}>SHA-256: {fileHash.slice(0, 32)}…</div>
             </div>
           )}
-        </div>
-
-        <div className="field">
-          <label>…atau isi URL foto manual (bila S3 belum aktif)</label>
-          <input value={photo} onChange={e => { setPhoto(e.target.value); setFileHash('') }} placeholder="s3://harvest/foto-panen.jpg" />
         </div>
 
         <button className="btn" disabled={busy || uploading}>{busy ? 'Mencatat ke blockchain…' : '🌾 Submit Laporan Panen'}</button>

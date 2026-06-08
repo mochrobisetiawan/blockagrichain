@@ -40,20 +40,32 @@ func (s *Server) activePolicy(w http.ResponseWriter, r *http.Request) {
 func (s *Server) proposePolicy(w http.ResponseWriter, r *http.Request) {
 	p := auth.From(r.Context())
 	var req struct {
-		PolicyName    string    `json:"policyName"`
-		UreaCoeff     float64   `json:"ureaCoeff"`
-		NpkCoeff      float64   `json:"npkCoeff"`
-		OrganicCoeff  float64   `json:"organicCoeff"`
-		BudgetCapIdr  int64     `json:"budgetCapIdr"`
-		EffectiveDate time.Time `json:"effectiveDate"`
+		PolicyName    string  `json:"policyName"`
+		UreaCoeff     float64 `json:"ureaCoeff"`
+		NpkCoeff      float64 `json:"npkCoeff"`
+		OrganicCoeff  float64 `json:"organicCoeff"`
+		BudgetCapIdr  int64   `json:"budgetCapIdr"`
+		EffectiveDate string  `json:"effectiveDate"` // "2006-01-02" atau RFC3339
 	}
 	if err := decode(r, &req); err != nil {
 		s.bad(w, "Body tidak valid")
 		return
 	}
+	if req.PolicyName == "" {
+		s.bad(w, "Nama kebijakan wajib diisi")
+		return
+	}
+	// Terima tanggal "2026-07-01" maupun RFC3339; fallback ke hari ini.
+	eff := time.Now()
+	for _, layout := range []string{"2006-01-02", time.RFC3339} {
+		if t, e := time.Parse(layout, req.EffectiveDate); e == nil {
+			eff = t
+			break
+		}
+	}
 	var cnt int64
 	s.db.Model(&models.Policy{}).Count(&cnt)
-	chainIDStr := fmt.Sprintf("POL-%d-%03d", req.EffectiveDate.Year(), cnt+1)
+	chainIDStr := fmt.Sprintf("POL-%d-%03d", eff.Year(), cnt+1)
 	contentHash := auth.Sha256Hex(fmt.Sprintf("%s|%v|%v|%d", req.PolicyName, req.UreaCoeff, req.NpkCoeff, req.BudgetCapIdr))
 
 	// koefisien kg/ton → x10000 (coeff4dp = kgPerTon * 10)
@@ -63,13 +75,12 @@ func (s *Server) proposePolicy(w http.ResponseWriter, r *http.Request) {
 
 	_, proof, err := s.fab.Submit(p.MspID, "ProposePolicy",
 		chainIDStr, req.PolicyName, contentHash, urea4dp, npk4dp, org4dp,
-		strconv.FormatInt(req.BudgetCapIdr*100, 10), strconv.FormatInt(req.EffectiveDate.Unix(), 10))
+		strconv.FormatInt(req.BudgetCapIdr*100, 10), strconv.FormatInt(eff.Unix(), 10))
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
 	tx := proof.TxID
-	eff := req.EffectiveDate
 	pol := models.Policy{
 		PolicyName: req.PolicyName, ProposedBy: &p.UserID,
 		UreaCoeff: req.UreaCoeff, NpkCoeff: req.NpkCoeff, OrganicCoeff: req.OrganicCoeff,

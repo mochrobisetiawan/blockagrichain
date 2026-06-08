@@ -52,7 +52,7 @@ export default function Login() {
             </div>
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', letterSpacing: -0.5 }}>BlockAgriChain</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>Sistem Blockchain Alokasi Pupuk Bersubsidi · IPB University 2026</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>Sistem Blockchain Alokasi Pupuk Bersubsidi</div>
             </div>
           </div>
           <p style={{ color: 'rgba(255,255,255,.45)', fontSize: 13, maxWidth: 520, margin: '0 auto', lineHeight: 1.6 }}>
@@ -61,7 +61,7 @@ export default function Login() {
         </div>
 
         {/* Role cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 22 }}>
+        <div className="role-grid">
           {ROLES.map(r => (
             <button key={r.id} onClick={() => pick(r.id, r.user)} style={{
               padding: '20px 12px', borderRadius: 16, cursor: 'pointer', textAlign: 'center', transition: 'all .2s',
