@@ -146,6 +146,8 @@ export default function Harvests() {
         { label: 'Komoditas', value: detail.cropType },
         { label: 'Kuantitas klaim', value: `${fmt(detail.qtyClaimedKg)} kg` },
         { label: 'Provinsi', value: detail.land?.province ?? '—' },
+        { label: 'Berat IoT (OCR)', value: detail.iotWeightKg ? `${fmt(detail.iotWeightKg)} kg` : '—' },
+        { label: 'Perangkat IoT', value: detail.iotDeviceId ? <span className="mono">🔌 {detail.iotDeviceId}</span> : '—' },
         { label: 'Alokasi', value: detail.allocation ? `${detail.allocation.ureaKg}/${detail.allocation.npkKg}/${detail.allocation.organicKg} kg` : '—' },
       ]}
       onClose={() => setDetail(null)} />
