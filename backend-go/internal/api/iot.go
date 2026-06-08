@@ -50,6 +50,12 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ID perangkat IoT: dari header X-Device-Id (perangkat ESP) atau field 'deviceId'.
+	deviceID := r.Header.Get("X-Device-Id")
+	if deviceID == "" {
+		deviceID = r.FormValue("deviceId")
+	}
+
 	// Ambil SEMUA part bernama "image" lalu pilih yang terbesar — Postman kadang
 	// menyertakan field "image" placeholder (postman-cloud://) berukuran 0 byte di
 	// depan file asli; tanpa ini server bisa memproses file kosong → OCR gagal.
@@ -94,6 +100,9 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.IoTImageURL = &imgURL
+	if deviceID != "" {
+		h.IoTDeviceID = &deviceID
+	}
 	if raw != "" {
 		h.IoTOcrRaw = &raw
 	}
@@ -102,11 +111,15 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 	}
 	s.db.Save(&h)
 
+	devNote := ""
+	if deviceID != "" {
+		devNote = " (perangkat " + deviceID + ")"
+	}
 	s.notify(models.RoleBulog, "IoTReading", "Data timbangan IoT diterima",
-		"Foto + hasil OCR untuk panen "+h.HarvestChainID+" siap diverifikasi.", "", nil)
+		"Foto + hasil OCR untuk panen "+h.HarvestChainID+devNote+" siap diverifikasi.", "", nil)
 
 	s.json(w, http.StatusOK, map[string]any{
-		"harvestId": h.ID, "imageFile": hdr.Filename, "ocrRaw": raw,
+		"harvestId": h.ID, "deviceId": deviceID, "imageFile": hdr.Filename, "ocrRaw": raw,
 		"ocrWeight": val, "ocrAvailable": ocr.Available(),
 	})
 }

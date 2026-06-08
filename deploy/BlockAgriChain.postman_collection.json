@@ -10,7 +10,10 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "https://blockagrichain.digitalisasi-pi.com" },
+    { "key": "username", "value": "budi" },
+    { "key": "password", "value": "password123" },
     { "key": "harvestChainId", "value": "HRV-0001" },
+    { "key": "deviceId", "value": "ESP32CAM-01" },
     { "key": "iotKey", "value": "" },
     { "key": "token", "value": "" }
   ],
@@ -48,7 +51,7 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"budi\",\n  \"password\": \"password123\"\n}"
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/auth/login",
@@ -75,12 +78,14 @@
       "request": {
         "method": "POST",
         "header": [
+          { "key": "X-Device-Id", "value": "{{deviceId}}" },
           { "key": "X-IoT-Key", "value": "{{iotKey}}", "disabled": true }
         ],
         "body": {
           "mode": "formdata",
           "formdata": [
             { "key": "harvestChainId", "value": "{{harvestChainId}}", "type": "text" },
+            { "key": "deviceId", "value": "{{deviceId}}", "type": "text" },
             { "key": "image", "type": "file", "src": "" }
           ]
         },
