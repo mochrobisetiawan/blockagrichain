@@ -30,6 +30,8 @@ services:
       S3_PUBLIC_BASE_URL: "${S3_PUBLIC_BASE_URL:-}"
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+      # Kunci endpoint IoT (ESP32 kirim gambar timbangan). Kosong = tanpa proteksi.
+      IOT_API_KEY: "${IOT_API_KEY:-}"
       # Fabric
       FABRIC_CHANNEL: "blockagri"
       FABRIC_CHAINCODE: "blockagri"

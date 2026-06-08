@@ -1,0 +1,88 @@
+package api
+
+import (
+	"io"
+	"net/http"
+	"strconv"
+
+	"blockagrichain/backend/internal/models"
+	"blockagrichain/backend/internal/ocr"
+)
+
+// iotWeight — POST /api/iot/weight  (multipart/form-data)
+//
+//	Header : X-IoT-Key: <kunci>   (wajib bila IOT_API_KEY di-set)
+//	Field  : harvestId  ATAU  harvestChainId   (panen yang sedang ditimbang)
+//	File   : image      (foto display timbangan dari ESP32-CAM)
+//
+// Alur (skema baru): ESP32 kirim GAMBAR → server simpan ke S3 → OCR di server
+// (Tesseract) → berat tersimpan di panen → muncul di layar verifikasi Bulog.
+// Endpoint TIDAK pakai JWT (perangkat ESP), tapi dilindungi X-IoT-Key.
+func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.IoTApiKey != "" && r.Header.Get("X-IoT-Key") != s.cfg.IoTApiKey {
+		s.json(w, http.StatusUnauthorized, map[string]any{"error": "X-IoT-Key salah / tidak ada"})
+		return
+	}
+	if err := r.ParseMultipartForm(12 << 20); err != nil {
+		s.bad(w, "form tidak valid — kirim multipart/form-data")
+		return
+	}
+
+	var h models.Harvest
+	if idStr := r.FormValue("harvestId"); idStr != "" {
+		id, _ := strconv.ParseInt(idStr, 10, 64)
+		s.db.First(&h, id)
+	} else if cid := r.FormValue("harvestChainId"); cid != "" {
+		s.db.Where("harvest_chain_id = ?", cid).First(&h)
+	}
+	if h.ID == 0 {
+		s.notFound(w, "Panen tidak ditemukan (sertakan harvestId / harvestChainId)")
+		return
+	}
+
+	file, hdr, err := r.FormFile("image")
+	if err != nil {
+		s.bad(w, "field 'image' wajib (foto display timbangan)")
+		return
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, 12<<20))
+	if err != nil {
+		s.bad(w, "gagal membaca gambar")
+		return
+	}
+
+	ct := hdr.Header.Get("Content-Type")
+	if ct == "" {
+		ct = "image/jpeg"
+	}
+	imgURL, _, err := s.s3.Put(r.Context(), "iot", hdr.Filename, ct, data)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+
+	raw, val := "", 0.0
+	if ocr.Available() {
+		if rw, v, e := ocr.Extract(r.Context(), data); e == nil {
+			raw, val = rw, v
+		}
+	}
+
+	h.IoTImageURL = &imgURL
+	if raw != "" {
+		h.IoTOcrRaw = &raw
+	}
+	if val > 0 {
+		h.IoTWeightKg = &val
+	}
+	s.db.Save(&h)
+
+	s.notify(models.RoleBulog, "IoTReading", "Data timbangan IoT diterima",
+		"Foto + hasil OCR untuk panen "+h.HarvestChainID+" siap diverifikasi.", "", nil)
+
+	s.json(w, http.StatusOK, map[string]any{
+		"harvestId": h.ID, "imageUrl": imgURL, "ocrRaw": raw,
+		"ocrWeight": val, "ocrAvailable": ocr.Available(),
+	})
+}

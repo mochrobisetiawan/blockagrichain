@@ -12,12 +12,13 @@ interface Harvest {
   farmer?: { fullName: string; farmerGroup: string; farmerChainId: string }
   land?: { village: string; province: string; landAreaHa: number; gpsLat: number; gpsLng: number }
   allocation?: { ureaKg: number; npkKg: number; organicKg: number } | null
+  iotImageUrl?: string; iotWeightKg?: number; iotOcrRaw?: string
 }
 
 /* ───── Modal Verifikasi Fisik (gaya prototype + IoT Smart Scale) ───── */
 function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; onDone: () => void }) {
   const toast = useToast()
-  const [weight, setWeight] = useState(String(Math.round(h.qtyClaimedKg * 0.97)))
+  const [weight, setWeight] = useState(String(h.iotWeightKg ?? Math.round(h.qtyClaimedKg * 0.97)))
   const [busy, setBusy] = useState<string>('')
   const [proof, setProof] = useState<ChainProof | null>(null)
   const iotW = Number(weight) || 0
@@ -60,6 +61,21 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
               </div>
             ))}
           </div>
+
+          {/* Foto display timbangan dari ESP32-CAM + hasil OCR */}
+          {h.iotImageUrl ? (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txtM)', marginBottom: 6 }}>📷 Foto display timbangan (ESP32-CAM)</div>
+              <img src={h.iotImageUrl} alt="display timbangan"
+                style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, background: '#f3f4f6', border: '1px solid var(--border)' }}
+                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+              {h.iotOcrRaw && <div style={{ fontSize: 11, color: 'var(--txtS)', marginTop: 4 }}>Hasil OCR mentah: <b className="mono">{h.iotOcrRaw}</b></div>}
+            </div>
+          ) : (
+            <div style={{ marginBottom: 14, background: 'var(--amberL)', color: '#92400e', borderRadius: 10, padding: '10px 13px', fontSize: 12 }}>
+              📡 Belum ada data IoT dari ESP32-CAM untuk panen ini — isi berat manual.
+            </div>
+          )}
 
           {/* Input berat OCR */}
           <div style={{ marginBottom: 14 }}>

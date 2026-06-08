@@ -7,6 +7,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -28,6 +29,7 @@ type S3 struct {
 	publicURL string // override base URL publik object; kosong = bentuk standar AWS
 
 	once    sync.Once
+	client  *s3.Client
 	presign *s3.PresignClient
 	initErr error
 }
@@ -53,9 +55,36 @@ func (s *S3) init(ctx context.Context) error {
 				o.UsePathStyle = true // MinIO / endpoint kustom
 			}
 		})
+		s.client = cl
 		s.presign = s3.NewPresignClient(cl)
 	})
 	return s.initErr
+}
+
+// Put — unggah byte langsung dari server (mis. gambar dari ESP32 yang masuk ke
+// backend). Mengembalikan URL object. Jika S3 tak dikonfigurasi, kembalikan
+// placeholder agar alur tetap jalan (file sebenarnya disimpan saat S3 aktif).
+func (s *S3) Put(ctx context.Context, kind, filename, contentType string, data []byte) (objectURL, key string, err error) {
+	key = objectKey(kind, filename)
+	if !s.Enabled() {
+		return "local://" + key, key, nil // placeholder bila S3 belum diaktifkan
+	}
+	if err = s.init(ctx); err != nil {
+		return "", "", fmt.Errorf("inisialisasi S3 gagal: %w", err)
+	}
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String(contentType),
+	})
+	if err != nil {
+		return "", "", err
+	}
+	return s.objectURL(key), key, nil
 }
 
 // objectKey — kind/<tanggal>/<random>.<ext> (mis. harvest/2026-06-05/ab12cd34.jpg).

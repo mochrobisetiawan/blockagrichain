@@ -61,6 +61,9 @@ func (s *Server) Router() http.Handler {
 		r.Get("/health", func(w http.ResponseWriter, _ *http.Request) { s.json(w, 200, map[string]string{"status": "ok"}) })
 		r.Post("/auth/login", s.login)
 
+		// IoT ingest (ESP32-CAM kirim gambar timbangan) — tanpa JWT, dilindungi X-IoT-Key.
+		r.Post("/iot/weight", s.iotWeight)
+
 		r.Group(func(r chi.Router) {
 			r.Use(s.auth.Middleware)
 			r.Get("/auth/me", s.me)

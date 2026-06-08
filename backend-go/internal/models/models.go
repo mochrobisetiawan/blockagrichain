@@ -109,6 +109,11 @@ type Harvest struct {
 	BlockchainTxID  *string   `gorm:"column:blockchain_tx_id;size:128" json:"blockchainTxId,omitempty"`
 	SubmittedAt     time.Time `gorm:"column:submitted_at" json:"submittedAt"`
 
+	// Data IoT dari ESP32-CAM (Smart Scale): URL gambar display + hasil OCR berat.
+	IoTImageURL *string  `gorm:"column:iot_image_url" json:"iotImageUrl,omitempty"`
+	IoTWeightKg *float64 `gorm:"column:iot_weight_kg" json:"iotWeightKg,omitempty"`
+	IoTOcrRaw   *string  `gorm:"column:iot_ocr_raw;size:50" json:"iotOcrRaw,omitempty"`
+
 	Farmer       *Farmer       `gorm:"foreignKey:FarmerID" json:"-"`
 	Land         *FarmLand     `gorm:"foreignKey:LandID" json:"-"`
 	Verification *Verification `gorm:"foreignKey:HarvestRecordID" json:"-"`

@@ -36,6 +36,9 @@ type Config struct {
 	// Bila di-set, nilai dari secret menimpa env/default. Pakai IAM role (tanpa .env).
 	AWSSecretID string
 
+	// Kunci untuk endpoint IoT (ESP32 kirim gambar timbangan). Kosong = tanpa proteksi (dev).
+	IoTApiKey string
+
 	// Endpoint peer gateway per org (di Fargate = nama AWS Cloud Map).
 	PeerEndpoints map[string]string
 }
@@ -71,6 +74,7 @@ func Load() *Config {
 		S3PublicBaseURL: get("S3_PUBLIC_BASE_URL", ""),
 
 		AWSSecretID: get("AWS_SECRET_ID", get("SECRETS_MANAGER_ID", "")),
+		IoTApiKey:   get("IOT_API_KEY", ""),
 
 		// Default = port docker-compose lokal; override via env saat di Fargate.
 		PeerEndpoints: map[string]string{
