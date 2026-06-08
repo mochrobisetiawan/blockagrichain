@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,24 +21,40 @@ func ledgerKey(objectType, objectID string) string {
 
 func (s *Server) ledgerBlocks(w http.ResponseWriter, r *http.Request) {
 	take, _ := strconv.Atoi(r.URL.Query().Get("take"))
-	blocks, err := s.fab.ListBlocks(take)
-	if err != nil {
-		s.fail(w, err)
-		return
+	// Utama: baca blok native via qscc.
+	if blocks, err := s.fab.ListBlocks(take); err != nil {
+		log.Printf("ledgerBlocks: ListBlocks gagal, fallback ke feed event: %v", err)
+	} else {
+		rows := []map[string]any{}
+		for _, b := range blocks {
+			if len(b.Txs) == 0 {
+				rows = append(rows, map[string]any{"blockNumber": b.Number, "functionName": "(config)",
+					"key": "", "mspId": "OrdererMSP", "clientId": "", "txId": "", "hash": b.HeaderHash, "prevHash": b.PreviousHash})
+				continue
+			}
+			for _, t := range b.Txs {
+				rows = append(rows, map[string]any{"blockNumber": b.Number, "functionName": t.FunctionName,
+					"key": t.Key, "mspId": t.MspID, "clientId": "", "txId": t.TxID,
+					"hash": b.HeaderHash, "prevHash": b.PreviousHash, "timestamp": t.Timestamp})
+			}
+		}
+		if len(rows) > 0 {
+			s.json(w, 200, rows)
+			return
+		}
 	}
-	// Ratakan menjadi baris per-transaksi (sesuai tampilan Explorer).
-	rows := []map[string]any{}
-	for _, b := range blocks {
-		if len(b.Txs) == 0 {
-			rows = append(rows, map[string]any{"blockNumber": b.Number, "functionName": "(config)",
-				"key": "", "mspId": "OrdererMSP", "clientId": "", "txId": "", "hash": b.HeaderHash, "prevHash": b.PreviousHash})
-			continue
-		}
-		for _, t := range b.Txs {
-			rows = append(rows, map[string]any{"blockNumber": b.Number, "functionName": t.FunctionName,
-				"key": t.Key, "mspId": t.MspID, "clientId": "", "txId": t.TxID,
-				"hash": b.HeaderHash, "prevHash": b.PreviousHash, "timestamp": t.Timestamp})
-		}
+	// Fallback: feed event off-chain (ledger_events) — ditulis listener chaincode,
+	// selalu tersedia walau pembacaan blok native bermasalah. Explorer tak akan blank.
+	limit := take
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	var evs []models.LedgerEvent
+	s.db.Order("id desc").Limit(limit).Find(&evs)
+	rows := make([]map[string]any, 0, len(evs))
+	for _, e := range evs {
+		rows = append(rows, map[string]any{"blockNumber": e.BlockNumber, "functionName": e.EventName,
+			"key": "", "mspId": "", "clientId": "", "txId": e.TxID, "hash": "", "timestamp": e.CreatedAt})
 	}
 	s.json(w, 200, rows)
 }

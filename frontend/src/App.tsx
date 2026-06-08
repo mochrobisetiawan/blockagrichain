@@ -156,13 +156,13 @@ function MobileShell() {
   if (!user) return null
   const items = NAV[user.role]
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#e6f4ec,#f0faf5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div className="mob-wrap" style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#e6f4ec,#f0faf5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 390 }}>
-        <div style={{ background: '#18181b', borderRadius: 46, padding: '14px 10px 10px', boxShadow: '0 32px 80px rgba(0,0,0,.45)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+        <div className="mob-phone" style={{ background: '#18181b', borderRadius: 46, padding: '14px 10px 10px', boxShadow: '0 32px 80px rgba(0,0,0,.45)' }}>
+          <div className="mob-notch" style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
             <div style={{ width: 110, height: 26, background: '#000', borderRadius: 20 }} />
           </div>
-          <div style={{ background: '#f0faf5', borderRadius: 36, overflow: 'hidden', minHeight: 700, display: 'flex', flexDirection: 'column' }}>
+          <div className="mob-screen" style={{ background: '#f0faf5', borderRadius: 36, overflow: 'hidden', minHeight: 700, display: 'flex', flexDirection: 'column' }}>
             <div style={{ background: 'var(--g700)', padding: '8px 18px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'rgba(255,255,255,.9)', fontSize: 12, fontWeight: 700 }}>09:41</span>
               <LogoMark sz={16} dark />
@@ -184,7 +184,7 @@ function MobileShell() {
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+          <div className="mob-home" style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
             <div style={{ width: 90, height: 4, background: 'rgba(255,255,255,.25)', borderRadius: 4 }} />
           </div>
         </div>

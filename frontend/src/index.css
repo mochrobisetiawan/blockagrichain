@@ -102,6 +102,15 @@ tr:hover td { background:#fafdfb; }
 @media (max-width:760px){ .role-grid { grid-template-columns:repeat(2,1fr); } }
 @media (max-width:420px){ .role-grid { grid-template-columns:1fr; } }
 
+/* Petani: di HP asli, hilangkan bingkai "phone" → full-screen */
+@media (max-width:600px){
+  .mob-wrap { padding:0 !important; background:var(--g50) !important; align-items:stretch !important; }
+  .mob-wrap > div { max-width:100% !important; }
+  .mob-phone { border-radius:0 !important; padding:0 !important; background:transparent !important; box-shadow:none !important; }
+  .mob-screen { border-radius:0 !important; min-height:calc(100vh - 46px) !important; }
+  .mob-notch, .mob-home { display:none !important; }
+}
+
 /* Penyesuaian halaman Petani saat dirender di dalam bingkai HP */
 .fmob { padding-bottom: 8px; }
 .fmob .page-title { font-size:17px; }
