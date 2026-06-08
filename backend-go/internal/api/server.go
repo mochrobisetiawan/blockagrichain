@@ -59,6 +59,7 @@ func (s *Server) Router() http.Handler {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, _ *http.Request) { s.json(w, 200, map[string]string{"status": "ok"}) })
+		r.Get("/public/network", s.publicNetwork) // status jaringan real untuk landing (tanpa auth)
 		r.Post("/auth/login", s.login)
 
 		// IoT ingest (ESP32-CAM kirim gambar timbangan) — tanpa JWT, dilindungi X-IoT-Key.
