@@ -13,7 +13,7 @@ interface Harvest {
   farmer?: { fullName: string; farmerGroup: string; farmerChainId: string }
   land?: { village: string; province: string; landAreaHa: number; gpsLat: number; gpsLng: number }
   allocation?: { ureaKg: number; npkKg: number; organicKg: number } | null
-  iotImageUrl?: string; iotWeightKg?: number; iotOcrRaw?: string
+  iotImageUrl?: string; iotWeightKg?: number; iotOcrRaw?: string; iotDeviceId?: string
 }
 
 /* ───── Modal Verifikasi Fisik (gaya prototype + IoT Smart Scale) ───── */
@@ -73,7 +73,10 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
           {/* Foto display timbangan dari ESP32-CAM + hasil OCR */}
           {h.iotImageUrl ? (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txtM)', marginBottom: 6 }}>📷 Foto display timbangan (ESP32-CAM)</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txtM)' }}>📷 Foto display timbangan (ESP32-CAM)</div>
+                {h.iotDeviceId && <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: C.blue, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 9px' }}>🔌 {h.iotDeviceId}</span>}
+              </div>
               {imgSrc
                 ? <img src={imgSrc} alt="display timbangan" style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, background: '#f3f4f6', border: '1px solid var(--border)' }} />
                 : <div style={{ height: 120, display: 'grid', placeItems: 'center', background: '#f3f4f6', borderRadius: 10, color: 'var(--txtS)', fontSize: 12 }}>Memuat gambar…</div>}
@@ -94,7 +97,10 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
 
           {/* IoT result */}
           <div style={{ background: ok ? '#f0faf5' : '#fee2e2', borderRadius: 14, padding: '14px 16px', marginBottom: 16, border: `1px solid ${ok ? 'var(--g200)' : '#fca5a5'}` }}>
-            <div style={{ fontWeight: 700, fontSize: 12, color: ok ? C.g700 : C.red, marginBottom: 10 }}>📡 IoT Smart Scale + OCR (ESP32-CAM)</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: ok ? C.g700 : C.red }}>📡 IoT Smart Scale + OCR (ESP32-CAM)</div>
+              {h.iotDeviceId && <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: 'var(--txtM)' }}>🔌 {h.iotDeviceId}</span>}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, textAlign: 'center' }}>
               <div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--txtM)' }}>{fmt(h.qtyClaimedKg)} kg</div><div style={{ fontSize: 10, color: 'var(--txtS)' }}>Klaim Petani</div></div>
               <div><div style={{ fontSize: 20, fontWeight: 800, color: C.blue }}>{fmt(iotW)} kg</div><div style={{ fontSize: 10, color: 'var(--txtS)' }}>Terukur IoT</div></div>

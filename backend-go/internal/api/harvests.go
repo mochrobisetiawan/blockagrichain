@@ -17,6 +17,7 @@ func projectHarvest(h *models.Harvest) map[string]any {
 		"id": h.ID, "harvestChainId": h.HarvestChainID, "cropType": h.CropType,
 		"qtyClaimedKg": h.QtyClaimedKg, "status": h.Status, "harvestDocHash": h.HarvestDocHash,
 		"harvestPhotoUrl": h.HarvestPhotoURL, "blockchainTxId": h.BlockchainTxID, "submittedAt": h.SubmittedAt,
+		"iotImageUrl": h.IoTImageURL, "iotWeightKg": h.IoTWeightKg, "iotOcrRaw": h.IoTOcrRaw, "iotDeviceId": h.IoTDeviceID,
 		"farmer": nil, "land": nil, "verification": nil, "allocation": nil,
 	}
 	if h.Farmer != nil {
