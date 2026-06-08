@@ -36,6 +36,7 @@ func Extract(ctx context.Context, img []byte) (raw string, value float64, err er
 	}
 	candidates = append(candidates, img)
 
+	bestNum, bestScore := "", -1
 	for _, c := range candidates {
 		f, e := os.CreateTemp("", "iot-*.png")
 		if e != nil {
@@ -49,9 +50,10 @@ func Extract(ctx context.Context, img []byte) (raw string, value float64, err er
 		}
 		f.Close()
 
-		// Coba beberapa Page Segmentation Mode: 7 (satu baris), 8 (satu kata),
-		// 6 (blok), 11 (teks jarang), 13 (baris mentah). Pakai mode pertama
-		// yang menghasilkan angka.
+		// Coba SEMUA Page Segmentation Mode: 7 (satu baris), 8 (satu kata),
+		// 6 (blok), 11 (teks jarang), 13 (baris mentah). Jangan berhenti di hasil
+		// pertama — kumpulkan semua kandidat lalu pilih yang DIGIT-nya terbanyak,
+		// supaya pecahan ("7"/".7") tidak mengalahkan angka penuh ("6627").
 		for _, psm := range []string{"7", "8", "6", "11", "13"} {
 			cmd := exec.CommandContext(ctx, "tesseract", name, "stdout",
 				"--psm", psm, "-c", "tessedit_char_whitelist=0123456789.,")
@@ -60,16 +62,38 @@ func Extract(ctx context.Context, img []byte) (raw string, value float64, err er
 				err = e
 				continue
 			}
-			raw = strings.TrimSpace(string(out))
-			if m := numRe.FindString(raw); m != "" {
-				value, _ = strconv.ParseFloat(strings.ReplaceAll(m, ",", "."), 64)
-				os.Remove(name)
-				return raw, value, nil
+			txt := strings.TrimSpace(string(out))
+			for _, m := range numRe.FindAllString(txt, -1) {
+				if sc := digitCount(m); sc > bestScore {
+					bestScore, bestNum, raw = sc, m, txt
+				}
 			}
 		}
 		os.Remove(name)
+
+		// Sudah dapat angka cukup panjang (≥2 digit) dari kandidat pra-proses →
+		// tak perlu fallback ke gambar asli.
+		if bestScore >= 2 {
+			break
+		}
 	}
-	return raw, 0, err
+
+	if bestNum == "" {
+		return raw, 0, err
+	}
+	value, _ = strconv.ParseFloat(strings.ReplaceAll(bestNum, ",", "."), 64)
+	return raw, value, nil
+}
+
+// digitCount — jumlah karakter angka dalam string (skor "kepanjangan" angka).
+func digitCount(s string) int {
+	n := 0
+	for _, c := range s {
+		if c >= '0' && c <= '9' {
+			n++
+		}
+	}
+	return n
 }
 
 // preprocess — grayscale → ambang Otsu (teks hitam di putih) → buang noise →
