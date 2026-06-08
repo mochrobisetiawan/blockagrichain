@@ -62,8 +62,10 @@ func (s *Server) Router() http.Handler {
 		r.Get("/public/network", s.publicNetwork) // status jaringan real untuk landing (tanpa auth)
 		r.Post("/auth/login", s.login)
 
-		// IoT ingest (ESP32-CAM kirim gambar timbangan) — tanpa JWT, dilindungi X-IoT-Key.
+		// IoT ingest (ESP32-CAM kirim gambar timbangan) — Bearer JWT atau X-IoT-Key.
 		r.Post("/iot/weight", s.iotWeight)
+		// IoT kirim BERAT langsung (tanpa OCR) — Bearer JWT atau X-IoT-Key.
+		r.Post("/iot-value/weight", s.iotWeightValue)
 
 		r.Group(func(r chi.Router) {
 			r.Use(s.auth.Middleware)

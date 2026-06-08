@@ -41,7 +41,9 @@ export default function Landing() {
             </div>
             <div><div style={{ fontWeight: 800, fontSize: 17, letterSpacing: -.4 }}>BlockAgriChain</div><div style={{ fontSize: 9.5, color: 'rgba(255,255,255,.5)', textTransform: 'uppercase', letterSpacing: .3, fontWeight: 600 }}>Blockchain Pupuk Bersubsidi</div></div>
           </div>
-          <button onClick={() => nav('/login')} style={{ background: '#fff', color: '#0c2b1a', border: 'none', borderRadius: 11, padding: '10px 20px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Masuk ke Sistem</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: up ? '#a7f3d0' : '#fca5a5', fontWeight: 600 }}>
+            <span style={dot(!!up)} />{err ? 'Server tak terhubung' : up ? 'Jaringan aktif' : 'Jaringan down'}
+          </div>
         </div>
       </div>
 

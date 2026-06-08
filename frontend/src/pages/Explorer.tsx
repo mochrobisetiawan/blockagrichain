@@ -6,7 +6,14 @@ import { Empty, useToast } from '../ui'
 
 interface Block {
   blockNumber: number; txId: string; functionName: string; key: string
-  mspId: string; clientId: string; timestamp: string; hash: string; prevHash: string
+  mspId: string; clientId: string; timestamp: string | number; hash: string; prevHash: string
+}
+
+// timestamp bisa berupa epoch detik (qscc) atau string ISO (fallback feed).
+const fmtTs = (t: string | number | undefined | null): string => {
+  if (t === undefined || t === null || t === '') return '—'
+  const d = typeof t === 'number' ? new Date(t * 1000) : new Date(t)
+  return isNaN(d.getTime()) ? String(t) : d.toLocaleString('id-ID')
 }
 interface Integrity { intact: boolean; totalBlocks: number; brokenBlocks: number; firstBrokenBlock: number | null; headHash: string }
 
@@ -64,7 +71,7 @@ export default function Explorer() {
               <div style={{ fontSize: 12, color: 'var(--txtS)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.key}</div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontSize: 10, color: 'var(--txtS)', fontFamily: 'monospace' }}>{(b.timestamp ?? '').replace('T', ' ').slice(0, 19)}</div>
+              <div style={{ fontSize: 10, color: 'var(--txtS)', fontFamily: 'monospace' }}>{fmtTs(b.timestamp)}</div>
               <div style={{ fontSize: 9, color: 'var(--g500)', fontFamily: 'monospace', marginTop: 2 }}>Hash: {shortTx(b.hash)}</div>
             </div>
           </div>

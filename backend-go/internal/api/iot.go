@@ -22,15 +22,7 @@ import (
 // (Tesseract) → berat tersimpan di panen → muncul di layar verifikasi Bulog.
 // Endpoint TIDAK pakai JWT (perangkat ESP), tapi dilindungi X-IoT-Key.
 func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
-	// Otorisasi fleksibel: terima Bearer JWT (login web/Postman) ATAU X-IoT-Key
-	// (perangkat ESP32). Jika header Authorization ada, token wajib sah.
-	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
-		if _, err := s.auth.Verify(strings.TrimPrefix(h, "Bearer ")); err != nil {
-			s.json(w, http.StatusUnauthorized, map[string]any{"error": "Bearer token tidak valid"})
-			return
-		}
-	} else if s.cfg.IoTApiKey != "" && r.Header.Get("X-IoT-Key") != s.cfg.IoTApiKey {
-		s.json(w, http.StatusUnauthorized, map[string]any{"error": "Bearer token atau X-IoT-Key wajib"})
+	if !s.iotAuthorized(w, r) {
 		return
 	}
 	if err := r.ParseMultipartForm(12 << 20); err != nil {
@@ -38,15 +30,8 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var h models.Harvest
-	if idStr := r.FormValue("harvestId"); idStr != "" {
-		id, _ := strconv.ParseInt(idStr, 10, 64)
-		s.db.First(&h, id)
-	} else if cid := r.FormValue("harvestChainId"); cid != "" {
-		s.db.Where("harvest_chain_id = ?", cid).First(&h)
-	}
-	if h.ID == 0 {
-		s.notFound(w, "Panen tidak ditemukan (sertakan harvestId / harvestChainId)")
+	h, ok := s.iotFindHarvest(w, r)
+	if !ok {
 		return
 	}
 
@@ -121,6 +106,118 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 	s.json(w, http.StatusOK, map[string]any{
 		"harvestId": h.ID, "deviceId": deviceID, "imageFile": hdr.Filename, "ocrRaw": raw,
 		"ocrWeight": val, "ocrAvailable": ocr.Available(),
+	})
+}
+
+// iotAuthorized — otorisasi fleksibel untuk endpoint IoT: terima Bearer JWT
+// (login web/Postman) ATAU X-IoT-Key (perangkat ESP32). Menulis 401 & return
+// false bila gagal.
+func (s *Server) iotAuthorized(w http.ResponseWriter, r *http.Request) bool {
+	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
+		if _, err := s.auth.Verify(strings.TrimPrefix(h, "Bearer ")); err != nil {
+			s.json(w, http.StatusUnauthorized, map[string]any{"error": "Bearer token tidak valid"})
+			return false
+		}
+		return true
+	}
+	if s.cfg.IoTApiKey != "" && r.Header.Get("X-IoT-Key") != s.cfg.IoTApiKey {
+		s.json(w, http.StatusUnauthorized, map[string]any{"error": "Bearer token atau X-IoT-Key wajib"})
+		return false
+	}
+	return true
+}
+
+// iotFindHarvest — cari panen dari field 'harvestId' atau 'harvestChainId'.
+func (s *Server) iotFindHarvest(w http.ResponseWriter, r *http.Request) (models.Harvest, bool) {
+	var h models.Harvest
+	if idStr := r.FormValue("harvestId"); idStr != "" {
+		id, _ := strconv.ParseInt(idStr, 10, 64)
+		s.db.First(&h, id)
+	} else if cid := r.FormValue("harvestChainId"); cid != "" {
+		s.db.Where("harvest_chain_id = ?", cid).First(&h)
+	}
+	if h.ID == 0 {
+		s.notFound(w, "Panen tidak ditemukan (sertakan harvestId / harvestChainId)")
+		return h, false
+	}
+	return h, true
+}
+
+// iotWeightValue — POST /api/iot-value/weight (multipart/form-data)
+//
+//	Otorisasi : Bearer JWT  ATAU  X-IoT-Key
+//	Field     : harvestId / harvestChainId, ocrWeight (berat kg, WAJIB),
+//	            deviceId (opsional), image (file, OPSIONAL sebagai bukti)
+//
+// Berbeda dari /iot/weight: berat dikirim LANGSUNG tanpa OCR (perangkat membaca
+// angka sendiri / input manual). Bila gambar disertakan, ikut disimpan ke S3.
+func (s *Server) iotWeightValue(w http.ResponseWriter, r *http.Request) {
+	if !s.iotAuthorized(w, r) {
+		return
+	}
+	if err := r.ParseMultipartForm(12 << 20); err != nil {
+		s.bad(w, "form tidak valid — kirim multipart/form-data")
+		return
+	}
+	h, ok := s.iotFindHarvest(w, r)
+	if !ok {
+		return
+	}
+
+	val, perr := strconv.ParseFloat(strings.TrimSpace(r.FormValue("ocrWeight")), 64)
+	if perr != nil || val <= 0 {
+		s.bad(w, "field 'ocrWeight' wajib berupa angka berat (kg) > 0")
+		return
+	}
+
+	deviceID := r.Header.Get("X-Device-Id")
+	if deviceID == "" {
+		deviceID = r.FormValue("deviceId")
+	}
+
+	// Gambar opsional sebagai bukti — pilih part terbesar bila ada.
+	var imgURL string
+	if files := r.MultipartForm.File["image"]; len(files) > 0 {
+		hdr := files[0]
+		for _, fh := range files {
+			if fh.Size > hdr.Size {
+				hdr = fh
+			}
+		}
+		if f, e := hdr.Open(); e == nil {
+			defer f.Close()
+			if data, e2 := io.ReadAll(io.LimitReader(f, 12<<20)); e2 == nil {
+				ct := hdr.Header.Get("Content-Type")
+				if ct == "" {
+					ct = "image/jpeg"
+				}
+				if u, _, e3 := s.s3.Put(r.Context(), "iot", hdr.Filename, ct, data); e3 == nil {
+					imgURL = u
+				}
+			}
+		}
+	}
+
+	h.IoTWeightKg = &val
+	if imgURL != "" {
+		h.IoTImageURL = &imgURL
+	}
+	if deviceID != "" {
+		h.IoTDeviceID = &deviceID
+	}
+	src := "value(direct)"
+	h.IoTOcrRaw = &src
+	s.db.Save(&h)
+
+	devNote := ""
+	if deviceID != "" {
+		devNote = " (perangkat " + deviceID + ")"
+	}
+	s.notify(models.RoleBulog, "IoTReading", "Data berat IoT diterima",
+		"Berat timbangan untuk panen "+h.HarvestChainID+devNote+" siap diverifikasi.", "", nil)
+
+	s.json(w, http.StatusOK, map[string]any{
+		"harvestId": h.ID, "deviceId": deviceID, "ocrWeight": val, "hasImage": imgURL != "",
 	})
 }
 

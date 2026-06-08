@@ -164,7 +164,7 @@ export default function Harvests() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16, marginTop: 18 }}>
             {data?.map(h => (
-              <div key={h.id} style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid var(--border)' }}>
+              <div key={h.id} onClick={() => setDetail(h)} title="Klik untuk detail & riwayat on-chain" style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid var(--border)', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><Badge status={h.status} /><span style={{ fontSize: 11, color: 'var(--txtS)' }}>{(h.submittedAt ?? '').slice(0, 10)}</span></div>
                 <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 3 }}>{h.farmer?.fullName}</div>
                 <div style={{ fontSize: 12, color: 'var(--txtS)', marginBottom: 14 }}>{h.land?.village}, {h.land?.province}</div>
@@ -176,12 +176,13 @@ export default function Harvests() {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setModal(h)} className="btn" style={{ width: '100%', justifyContent: 'center' }}>Mulai Verifikasi Fisik</button>
+                <button onClick={(e) => { e.stopPropagation(); setModal(h) }} className="btn" style={{ width: '100%', justifyContent: 'center' }}>Mulai Verifikasi Fisik</button>
               </div>
             ))}
           </div>
         )}
         {modal && <VerifModal h={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); reload() }} />}
+        {detailModal}
       </div>
     )
   }

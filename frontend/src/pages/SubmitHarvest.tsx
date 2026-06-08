@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, sha256File, sha256Hex, uploadToS3, type ChainProof } from '../api'
 import { useApi } from '../hooks'
 import { ChainProofBox, useToast } from '../ui'
+import MapPicker from '../components/MapPicker'
 
 interface Land { id: number; village: string; district: string; province: string; landAreaHa: number; gpsLat: number; gpsLng: number; isPrimary: boolean }
 interface Profile { lands: Land[] }
@@ -83,8 +84,10 @@ export default function SubmitHarvest() {
         </div>
         {land && (
           <div className="field">
-            <label>GPS Lahan (auto-detect)</label>
-            <input className="mono" value={`${land.gpsLat}, ${land.gpsLng}`} readOnly />
+            <label>Lokasi Lahan</label>
+            <input className="mono" value={`${land.gpsLat}, ${land.gpsLng}`} readOnly style={{ marginBottom: 8 }} />
+            <MapPicker lat={land.gpsLat} lng={land.gpsLng} onChange={() => {}} height={220} />
+            <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>📍 {land.village}, {land.district}, {land.province}</div>
           </div>
         )}
 

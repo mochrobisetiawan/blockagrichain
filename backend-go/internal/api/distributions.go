@@ -73,12 +73,22 @@ func (s *Server) readyAllocations(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) createDistribution(w http.ResponseWriter, r *http.Request) {
 	p := auth.From(r.Context())
 	var req struct {
-		AllocationID  int64      `json:"allocationId"`
-		ScheduledDate *time.Time `json:"scheduledDate"`
+		AllocationID  int64  `json:"allocationId"`
+		ScheduledDate string `json:"scheduledDate"`
 	}
 	if err := decode(r, &req); err != nil {
 		s.bad(w, "Body tidak valid")
 		return
+	}
+	// Frontend mengirim tanggal "2006-01-02" (atau RFC3339) — parse manual karena
+	// time.Time tidak bisa unmarshal format date-only.
+	var sched *time.Time
+	if req.ScheduledDate != "" {
+		if t, e := time.Parse("2006-01-02", req.ScheduledDate); e == nil {
+			sched = &t
+		} else if t, e := time.Parse(time.RFC3339, req.ScheduledDate); e == nil {
+			sched = &t
+		}
 	}
 	var alloc models.Allocation
 	if err := s.db.Preload("Harvest.Farmer.User").Preload("DistributionOrder").First(&alloc, req.AllocationID).Error; err != nil {
@@ -108,7 +118,7 @@ func (s *Server) createDistribution(w http.ResponseWriter, r *http.Request) {
 	tx := proof.TxID
 	order := models.DistributionOrder{
 		AllocationID: alloc.ID, PihcAgentID: p.UserID, Status: models.DistCreated,
-		DistributionChainID: distChainID, BlockchainTxID: &tx, ScheduledDate: req.ScheduledDate,
+		DistributionChainID: distChainID, BlockchainTxID: &tx, ScheduledDate: sched,
 	}
 	s.db.Create(&order)
 	uid := alloc.Harvest.Farmer.UserID
