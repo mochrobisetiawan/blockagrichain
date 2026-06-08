@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"path"
 	"strings"
 	"sync"
@@ -85,6 +86,39 @@ func (s *S3) Put(ctx context.Context, kind, filename, contentType string, data [
 		return "", "", err
 	}
 	return s.objectURL(key), key, nil
+}
+
+// keyFromURL — ekstrak object key dari URL hasil objectURL().
+func (s *S3) keyFromURL(u string) string {
+	base := s.objectURL("")
+	if strings.HasPrefix(u, base) {
+		return strings.TrimPrefix(u, base)
+	}
+	return ""
+}
+
+// GetByURL — ambil isi object dari URL-nya (untuk proxy gambar privat ke FE).
+func (s *S3) GetByURL(ctx context.Context, objectURL string) (data []byte, contentType string, err error) {
+	if !s.Enabled() {
+		return nil, "", fmt.Errorf("S3 belum dikonfigurasi")
+	}
+	if err = s.init(ctx); err != nil {
+		return nil, "", err
+	}
+	key := s.keyFromURL(objectURL)
+	if key == "" {
+		return nil, "", fmt.Errorf("URL object tidak dikenali")
+	}
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(key)})
+	if err != nil {
+		return nil, "", err
+	}
+	defer out.Body.Close()
+	data, err = io.ReadAll(out.Body)
+	if out.ContentType != nil {
+		contentType = *out.ContentType
+	}
+	return data, contentType, err
 }
 
 // objectKey — kind/<tanggal>/<random>.<ext> (mis. harvest/2026-06-05/ab12cd34.jpg).

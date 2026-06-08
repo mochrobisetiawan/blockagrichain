@@ -64,6 +64,17 @@ export async function uploadToS3(kind: 'harvest' | 'delivery' | 'profile', file:
   return p.objectUrl
 }
 
+// Ambil resource biner (mis. gambar privat dari proxy backend) dengan JWT,
+// kembalikan object URL untuk dipakai di <img src>. Ingat revoke saat unmount.
+export async function fetchObjectUrl(path: string): Promise<string> {
+  const headers: Record<string, string> = {}
+  const token = getToken()
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`/api${path}`, { headers })
+  if (!res.ok) throw new Error('Gagal memuat gambar')
+  return URL.createObjectURL(await res.blob())
+}
+
 // SHA-256 di sisi klien (untuk hash foto/dokumen sebelum dikirim — sesuai SKPL).
 export async function sha256Hex(input: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))

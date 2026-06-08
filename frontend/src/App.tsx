@@ -13,6 +13,7 @@ import Explorer from './pages/Explorer'
 import Notifications from './pages/Notifications'
 import VerifyHash from './pages/VerifyHash'
 import Farmers from './pages/Farmers'
+import Profil from './pages/Profil'
 
 interface NavDef { to: string; label: string; icon: string }
 
@@ -21,8 +22,8 @@ const NAV: Record<Role, NavDef[]> = {
     { to: '/', label: 'Beranda', icon: '⌂' },
     { to: '/submit', label: 'Input', icon: '+' },
     { to: '/harvests', label: 'Status', icon: '○' },
-    { to: '/distributions', label: 'Distribusi', icon: '◇' },
-    { to: '/notifications', label: 'Notif', icon: '◔' },
+    { to: '/distributions', label: 'Kirim', icon: '◇' },
+    { to: '/profil', label: 'Profil', icon: '☺' },
   ],
   BULOG: [
     { to: '/', label: 'Dashboard', icon: '◈' },
@@ -85,6 +86,7 @@ function AppRoutes() {
       <Route path="/payments" element={<Payments />} />
       <Route path="/distributions" element={<Distributions />} />
       <Route path="/farmers" element={<Farmers />} />
+      <Route path="/profil" element={<Profil />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/explorer" element={<Explorer />} />
       <Route path="*" element={<Navigate to="/" />} />

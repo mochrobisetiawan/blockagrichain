@@ -97,8 +97,14 @@ func (s *Server) Router() http.Handler {
 
 			// Farmers
 			r.With(auth.RequireRoles(models.RoleFarmer)).Get("/farmers/me", s.farmerMe)
+			r.With(auth.RequireRoles(models.RoleFarmer)).Patch("/farmers/me", s.updateFarmerMe)
+			r.With(auth.RequireRoles(models.RoleFarmer)).Post("/farmers/me/lands", s.addLand)
 			r.With(auth.RequireRoles(models.RoleBulog, models.RoleKementan, models.RoleKemenkeu, models.RolePihc)).Get("/farmers", s.listFarmers)
+			r.With(auth.RequireRoles(models.RoleKementan, models.RoleBulog)).Post("/farmers", s.createFarmer)
 			r.With(auth.RequireRoles(models.RoleKementan)).Post("/farmers/{id}/disable", s.disableFarmer)
+
+			// IoT image proxy (Bulog lihat foto timbangan dari S3 privat)
+			r.With(auth.RequireRoles(models.RoleBulog)).Get("/iot/image/{id}", s.iotImage)
 
 			// Notifications
 			r.Get("/notifications", s.listNotifications)

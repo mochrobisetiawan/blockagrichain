@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { api, fmt, shortTx, type ChainProof } from '../api'
+import { useEffect, useState } from 'react'
+import { api, fetchObjectUrl, fmt, shortTx, type ChainProof } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
 import { Badge, Empty, useToast } from '../ui'
@@ -24,6 +24,13 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
   const iotW = Number(weight) || 0
   const delta = h.qtyClaimedKg ? Math.abs((h.qtyClaimedKg - iotW) / h.qtyClaimedKg * 100) : 0
   const ok = delta < 10
+  const [imgSrc, setImgSrc] = useState('')
+  useEffect(() => {
+    if (!h.iotImageUrl) return
+    let url = ''
+    fetchObjectUrl(`/iot/image/${h.id}`).then(u => { url = u; setImgSrc(u) }).catch(() => {})
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [h.id, h.iotImageUrl])
 
   const decide = async (decision: 'APPROVED' | 'REJECTED') => {
     setBusy(decision)
@@ -66,9 +73,9 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
           {h.iotImageUrl ? (
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txtM)', marginBottom: 6 }}>📷 Foto display timbangan (ESP32-CAM)</div>
-              <img src={h.iotImageUrl} alt="display timbangan"
-                style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, background: '#f3f4f6', border: '1px solid var(--border)' }}
-                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+              {imgSrc
+                ? <img src={imgSrc} alt="display timbangan" style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, background: '#f3f4f6', border: '1px solid var(--border)' }} />
+                : <div style={{ height: 120, display: 'grid', placeItems: 'center', background: '#f3f4f6', borderRadius: 10, color: 'var(--txtS)', fontSize: 12 }}>Memuat gambar…</div>}
               {h.iotOcrRaw && <div style={{ fontSize: 11, color: 'var(--txtS)', marginTop: 4 }}>Hasil OCR mentah: <b className="mono">{h.iotOcrRaw}</b></div>}
             </div>
           ) : (

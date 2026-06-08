@@ -1,8 +1,10 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -10,6 +12,149 @@ import (
 	"blockagrichain/backend/internal/chain"
 	"blockagrichain/backend/internal/models"
 )
+
+// updateFarmerMe — PATCH /farmers/me (petani edit profil sendiri, off-chain).
+func (s *Server) updateFarmerMe(w http.ResponseWriter, r *http.Request) {
+	p := auth.From(r.Context())
+	var f models.Farmer
+	if err := s.db.Where("user_id = ?", p.UserID).First(&f).Error; err != nil {
+		s.notFound(w, "Profil petani tidak ditemukan")
+		return
+	}
+	var req struct {
+		FullName      string `json:"fullName"`
+		FarmerGroup   string `json:"farmerGroup"`
+		Phone         string `json:"phone"`
+		AddressDetail string `json:"addressDetail"`
+	}
+	if err := decode(r, &req); err != nil {
+		s.bad(w, "Body tidak valid")
+		return
+	}
+	if req.FullName != "" {
+		f.FullName = req.FullName
+	}
+	if req.FarmerGroup != "" {
+		f.FarmerGroup = &req.FarmerGroup
+	}
+	if req.Phone != "" {
+		f.Phone = &req.Phone
+	}
+	if req.AddressDetail != "" {
+		f.AddressDetail = &req.AddressDetail
+	}
+	s.db.Save(&f)
+	s.json(w, 200, map[string]any{"ok": true})
+}
+
+// addLand — POST /farmers/me/lands (petani tambah lahan, off-chain).
+func (s *Server) addLand(w http.ResponseWriter, r *http.Request) {
+	p := auth.From(r.Context())
+	var f models.Farmer
+	if err := s.db.Where("user_id = ?", p.UserID).First(&f).Error; err != nil {
+		s.notFound(w, "Profil petani tidak ditemukan")
+		return
+	}
+	var req struct {
+		Village    string   `json:"village"`
+		District   string   `json:"district"`
+		Province   string   `json:"province"`
+		LandAreaHa float64  `json:"landAreaHa"`
+		GpsLat     *float64 `json:"gpsLat"`
+		GpsLng     *float64 `json:"gpsLng"`
+		IsPrimary  bool     `json:"isPrimary"`
+	}
+	if err := decode(r, &req); err != nil || req.Village == "" || req.LandAreaHa <= 0 {
+		s.bad(w, "Data lahan tidak valid (desa & luas wajib)")
+		return
+	}
+	land := models.FarmLand{
+		FarmerID: f.ID, Village: req.Village, District: req.District, Province: req.Province,
+		LandAreaHa: req.LandAreaHa, GpsLat: req.GpsLat, GpsLng: req.GpsLng, IsPrimary: req.IsPrimary,
+	}
+	if err := s.db.Create(&land).Error; err != nil {
+		s.fail(w, err)
+		return
+	}
+	if req.IsPrimary {
+		s.db.Model(&models.FarmLand{}).Where("farmer_id = ? AND id <> ?", f.ID, land.ID).Update("is_primary", false)
+	}
+	s.json(w, 200, map[string]any{"id": land.ID})
+}
+
+// createFarmer — POST /farmers (Kementan/Bulog daftarkan petani baru) + on-chain RegisterFarmer.
+func (s *Server) createFarmer(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Username    string   `json:"username"`
+		Password    string   `json:"password"`
+		FullName    string   `json:"fullName"`
+		Nik         string   `json:"nik"`
+		FarmerGroup string   `json:"farmerGroup"`
+		Phone       string   `json:"phone"`
+		Village     string   `json:"village"`
+		District    string   `json:"district"`
+		Province    string   `json:"province"`
+		LandAreaHa  float64  `json:"landAreaHa"`
+		GpsLat      *float64 `json:"gpsLat"`
+		GpsLng      *float64 `json:"gpsLng"`
+	}
+	if err := decode(r, &req); err != nil || req.Username == "" || req.FullName == "" || req.Nik == "" {
+		s.bad(w, "username, fullName, dan NIK wajib diisi")
+		return
+	}
+	var dup int64
+	s.db.Model(&models.User{}).Where("username = ?", req.Username).Count(&dup)
+	if dup > 0 {
+		s.bad(w, "Username sudah dipakai")
+		return
+	}
+	cn, err := s.fab.ClientCN(models.MSPForRole(models.RoleFarmer))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	pw := req.Password
+	if pw == "" {
+		pw = "password123"
+	}
+	u := models.User{
+		Username: req.Username, Email: req.Username + "@blockagrichain.id",
+		PasswordHash: auth.HashPassword(pw), Role: models.RoleFarmer,
+		MspID: models.MSPForRole(models.RoleFarmer), FabricClientID: cn, IsActive: true, CreatedAt: time.Now(),
+	}
+	if err := s.db.Create(&u).Error; err != nil {
+		s.fail(w, err)
+		return
+	}
+	chainID := fmt.Sprintf("F-%04d", u.ID)
+	f := models.Farmer{UserID: u.ID, Nik: req.Nik, FullName: req.FullName, FarmerChainID: chainID}
+	if req.FarmerGroup != "" {
+		f.FarmerGroup = &req.FarmerGroup
+	}
+	if req.Phone != "" {
+		f.Phone = &req.Phone
+	}
+	s.db.Create(&f)
+	if req.Village != "" {
+		s.db.Create(&models.FarmLand{FarmerID: f.ID, Village: req.Village, District: req.District,
+			Province: req.Province, LandAreaHa: req.LandAreaHa, GpsLat: req.GpsLat, GpsLng: req.GpsLng, IsPrimary: true})
+	}
+	// On-chain: registrasi petani (submit memakai identitas PetaniMSP yang dipegang server).
+	landM2 := strconv.Itoa(int(req.LandAreaHa * 10000))
+	region := req.Province
+	if region == "" {
+		region = "-"
+	}
+	_, proof, err := s.fab.Submit(models.MSPForRole(models.RoleFarmer), "RegisterFarmer",
+		chainID, cn, auth.Sha256Hex(req.Nik), landM2, region)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	tx := proof.TxID
+	s.json(w, 200, map[string]any{"id": f.ID, "username": u.Username, "farmerChainId": chainID,
+		"txId": tx, "proof": proofOf(proof)})
+}
 
 func (s *Server) farmerMe(w http.ResponseWriter, r *http.Request) {
 	p := auth.From(r.Context())

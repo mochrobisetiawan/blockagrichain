@@ -5,9 +5,33 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
+
 	"blockagrichain/backend/internal/models"
 	"blockagrichain/backend/internal/ocr"
 )
+
+// iotImage — GET /api/iot/image/{id}  (Bulog) — proxy gambar timbangan dari S3
+// privat ke FE, sehingga bucket tetap private tapi gambar tampil di verifikasi.
+func (s *Server) iotImage(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	var h models.Harvest
+	if err := s.db.First(&h, id).Error; err != nil || h.IoTImageURL == nil || *h.IoTImageURL == "" {
+		s.notFound(w, "Gambar tidak ditemukan")
+		return
+	}
+	data, ct, err := s.s3.GetByURL(r.Context(), *h.IoTImageURL)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if ct == "" {
+		ct = "image/jpeg"
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	_, _ = w.Write(data)
+}
 
 // iotWeight — POST /api/iot/weight  (multipart/form-data)
 //
