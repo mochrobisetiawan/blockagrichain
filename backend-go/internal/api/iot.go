@@ -42,9 +42,23 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, hdr, err := r.FormFile("image")
-	if err != nil {
+	// Ambil SEMUA part bernama "image" lalu pilih yang terbesar — Postman kadang
+	// menyertakan field "image" placeholder (postman-cloud://) berukuran 0 byte di
+	// depan file asli; tanpa ini server bisa memproses file kosong → OCR gagal.
+	files := r.MultipartForm.File["image"]
+	if len(files) == 0 {
 		s.bad(w, "field 'image' wajib (foto display timbangan)")
+		return
+	}
+	hdr := files[0]
+	for _, fh := range files {
+		if fh.Size > hdr.Size {
+			hdr = fh
+		}
+	}
+	file, err := hdr.Open()
+	if err != nil {
+		s.bad(w, "gagal membuka gambar")
 		return
 	}
 	defer file.Close()
@@ -84,7 +98,7 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 		"Foto + hasil OCR untuk panen "+h.HarvestChainID+" siap diverifikasi.", "", nil)
 
 	s.json(w, http.StatusOK, map[string]any{
-		"harvestId": h.ID, "imageUrl": imgURL, "ocrRaw": raw,
+		"harvestId": h.ID, "imageFile": hdr.Filename, "ocrRaw": raw,
 		"ocrWeight": val, "ocrAvailable": ocr.Available(),
 	})
 }

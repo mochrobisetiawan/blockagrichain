@@ -34,17 +34,22 @@ func Extract(ctx context.Context, img []byte) (raw string, value float64, err er
 	}
 	f.Close()
 
-	cmd := exec.CommandContext(ctx, "tesseract", f.Name(), "stdout",
-		"--psm", "7", "-c", "tessedit_char_whitelist=0123456789.,")
-	out, err := cmd.Output()
-	if err != nil {
-		return "", 0, err
+	// Coba beberapa Page Segmentation Mode: 7 (satu baris), 6 (blok), 11 (teks
+	// jarang), 13 (baris mentah). Display timbangan/LCD tak selalu terbaca di satu
+	// mode; pakai mode pertama yang menghasilkan angka.
+	for _, psm := range []string{"7", "6", "11", "13"} {
+		cmd := exec.CommandContext(ctx, "tesseract", f.Name(), "stdout",
+			"--psm", psm, "-c", "tessedit_char_whitelist=0123456789.,")
+		out, e := cmd.Output()
+		if e != nil {
+			err = e
+			continue
+		}
+		raw = strings.TrimSpace(string(out))
+		if m := numRe.FindString(raw); m != "" {
+			value, _ = strconv.ParseFloat(strings.ReplaceAll(m, ",", "."), 64)
+			return raw, value, nil
+		}
 	}
-	raw = strings.TrimSpace(string(out))
-	m := numRe.FindString(raw)
-	if m == "" {
-		return raw, 0, nil
-	}
-	value, _ = strconv.ParseFloat(strings.ReplaceAll(m, ",", "."), 64)
-	return raw, value, nil
+	return raw, 0, err
 }
