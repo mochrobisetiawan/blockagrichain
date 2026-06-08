@@ -1,8 +1,12 @@
 {
   "info": {
     "name": "BlockAgriChain API",
-    "description": "Koleksi uji BlockAgriChain. Set variabel koleksi: baseUrl (DNS ALB), harvestChainId, iotKey (jika IOT_API_KEY di-set).",
+    "description": "Koleksi uji BlockAgriChain. Auth Bearer {{token}} dipasang di level collection -> SEMUA request mewarisi otomatis. Request publik (status & login) di-override 'No Auth'. Set variabel: baseUrl, harvestChainId, iotKey.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
   },
   "variable": [
     { "key": "baseUrl", "value": "https://blockagrichain.digitalisasi-pi.com" },
@@ -14,6 +18,7 @@
     {
       "name": "1. Status Jaringan (publik)",
       "request": {
+        "auth": { "type": "noauth" },
         "method": "GET",
         "header": [],
         "url": {
@@ -38,6 +43,7 @@
         }
       ],
       "request": {
+        "auth": { "type": "noauth" },
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
@@ -55,13 +61,13 @@
       "name": "3. Daftar Panen (cari harvestChainId)",
       "request": {
         "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/harvests",
           "host": ["{{baseUrl}}"],
           "path": ["api", "harvests"]
         },
-        "description": "Login dulu (request 2). Lihat field 'harvestChainId' (mis. HRV-0001) untuk dipakai di request IoT."
+        "description": "Mewarisi Bearer {{token}} dari collection. Lihat field 'harvestChainId' (mis. HRV-0001)."
       }
     },
     {
@@ -69,7 +75,6 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Authorization", "value": "Bearer {{token}}" },
           { "key": "X-IoT-Key", "value": "{{iotKey}}", "disabled": true }
         ],
         "body": {
@@ -84,20 +89,20 @@
           "host": ["{{baseUrl}}"],
           "path": ["api", "iot", "weight"]
         },
-        "description": "Body = form-data. Field 'image' bertipe File (pilih foto display timbangan, mis. dari folder OCR Sample). Otorisasi: Bearer token (otomatis dari request Login) ATAU header X-IoT-Key (aktifkan bila IOT_API_KEY di-set). JANGAN set Content-Type manual; cukup kirim SATU field 'image'."
+        "description": "Mewarisi Bearer {{token}} dari collection. Field 'image' bertipe File (pilih foto display timbangan). Alternatif perangkat: aktifkan header X-IoT-Key. JANGAN set Content-Type manual; kirim SATU field 'image'."
       }
     },
     {
       "name": "5. IoT — Lihat Gambar (Bulog)",
       "request": {
         "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/iot/image/1",
           "host": ["{{baseUrl}}"],
           "path": ["api", "iot", "image", "1"]
         },
-        "description": "Ganti '1' dengan harvestId. Login dulu sebagai bulog (request 2, ubah username=bulog) agar token role Bulog."
+        "description": "Mewarisi Bearer {{token}}. Ganti '1' dengan harvestId. Login sebagai bulog (request 2, ubah username) agar token role Bulog."
       }
     }
   ]
