@@ -62,7 +62,10 @@ export default function Landing() {
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,.62)', lineHeight: 1.65, maxWidth: 480, margin: '0 0 34px' }}>
             BlockAgriChain mencatat setiap langkah penyaluran pupuk bersubsidi — laporan petani, verifikasi Bulog, alokasi Kementan, distribusi, hingga pencairan Kemenkeu — di atas ledger blockchain yang tak dapat diubah.
           </p>
-          <button onClick={() => nav('/login')} style={{ background: '#fff', color: '#0c2b1a', border: 'none', borderRadius: 13, padding: '15px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 30px rgba(0,0,0,.28)' }}>Masuk ke Sistem →</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <button onClick={() => nav('/login')} style={{ background: '#fff', color: '#0c2b1a', border: 'none', borderRadius: 13, padding: '15px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 30px rgba(0,0,0,.28)' }}>Masuk ke Sistem →</button>
+            <button onClick={() => nav('/demo')} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.3)', borderRadius: 13, padding: '15px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>⚗ Demo Chaincode</button>
+          </div>
         </div>
 
         {/* Live ledger card — DATA NYATA */}

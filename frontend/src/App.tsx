@@ -14,6 +14,7 @@ import Notifications from './pages/Notifications'
 import VerifyHash from './pages/VerifyHash'
 import Farmers from './pages/Farmers'
 import Profil from './pages/Profil'
+import Demo from './pages/Demo'
 
 interface NavDef { to: string; label: string; icon: string }
 
@@ -35,6 +36,7 @@ const NAV: Record<Role, NavDef[]> = {
   KEMENTAN: [
     { to: '/', label: 'Dashboard', icon: '◈' },
     { to: '/policies', label: 'Kelola Kebijakan', icon: '⊞' },
+    { to: '/demo', label: 'Demo Chaincode', icon: '⚗' },
     { to: '/farmers', label: 'Data Petani', icon: '≡' },
     { to: '/explorer', label: 'Blockchain Explorer', icon: '⛓' },
   ],
@@ -89,6 +91,7 @@ function AppRoutes() {
       <Route path="/profil" element={<Profil />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/explorer" element={<Explorer />} />
+      <Route path="/demo" element={<Demo />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   )
@@ -203,6 +206,7 @@ function PublicApp() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/demo" element={<Demo />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   )
