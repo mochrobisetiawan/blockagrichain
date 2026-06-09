@@ -26,3 +26,6 @@ fabric/config/
 # Go
 backend-go/server
 *.test
+
+# Word lock files
+~$*
