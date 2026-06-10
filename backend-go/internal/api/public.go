@@ -45,12 +45,26 @@ func (s *Server) publicNetwork(w http.ResponseWriter, _ *http.Request) {
 	s.db.Model(&models.Harvest{}).Where("status = ?", models.HarvestVerified).Count(&verified)
 	s.db.Model(&models.Policy{}).Where("status = ?", models.PolicyActive).Count(&policies)
 
+	// Sebaran per wilayah (provinsi) untuk peta dashboard di landing.
+	type region struct {
+		Province string  `json:"province"`
+		Farmers  int64   `json:"farmers"`
+		Lat      float64 `json:"lat"`
+		Lng      float64 `json:"lng"`
+	}
+	regions := []region{}
+	s.db.Model(&models.FarmLand{}).
+		Select("province, COUNT(DISTINCT farmer_id) AS farmers, AVG(gps_lat) AS lat, AVG(gps_lng) AS lng").
+		Where("province <> '' AND gps_lat IS NOT NULL AND gps_lng IS NOT NULL").
+		Group("province").Scan(&regions)
+
 	s.json(w, 200, map[string]any{
 		"fabricUp":    herr == nil,
 		"blockHeight": height,
 		"nodesOnline": online,
 		"nodesTotal":  len(nodes),
 		"nodes":       nodes,
+		"regions":     regions,
 		"stats": map[string]any{
 			"farmers": farmers, "harvests": harvests, "verified": verified, "activePolicies": policies,
 		},

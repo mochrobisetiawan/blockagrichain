@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import RegionMap, { type RegionPoint } from '../components/RegionMap'
 
 interface Net {
   fabricUp: boolean; blockHeight: number; nodesOnline: number; nodesTotal: number
   nodes: { name: string; online: boolean }[]
+  regions?: RegionPoint[]
   stats: { farmers: number; harvests: number; verified: number; activePolicies: number }
 }
 
@@ -62,7 +64,10 @@ export default function Landing() {
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,.62)', lineHeight: 1.65, maxWidth: 480, margin: '0 0 34px' }}>
             BlockAgriChain mencatat setiap langkah penyaluran pupuk bersubsidi — laporan petani, verifikasi Bulog, alokasi Kementan, distribusi, hingga pencairan Kemenkeu — di atas ledger blockchain yang tak dapat diubah.
           </p>
-          <button onClick={() => nav('/login')} style={{ background: '#fff', color: '#0c2b1a', border: 'none', borderRadius: 13, padding: '15px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 30px rgba(0,0,0,.28)' }}>Masuk ke Sistem →</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <button onClick={() => nav('/login')} style={{ background: '#fff', color: '#0c2b1a', border: 'none', borderRadius: 13, padding: '15px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 30px rgba(0,0,0,.28)' }}>Masuk ke Sistem →</button>
+            <button onClick={() => nav('/login?register=1')} style={{ background: 'transparent', color: '#fff', border: '1.5px solid rgba(255,255,255,.4)', borderRadius: 13, padding: '15px 26px', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>🌾 Daftar sebagai Petani</button>
+          </div>
         </div>
 
         {/* Live ledger card — DATA NYATA */}
@@ -122,6 +127,26 @@ export default function Landing() {
       {/* Section terang: Cara Kerja + Fitur + Peran */}
       <div style={{ background: '#f6faf8', color: '#0c2b1a' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', padding: '74px 24px' }}>
+
+          {/* Peta Sebaran per Wilayah */}
+          <div style={{ textAlign: 'center', marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.5, color: '#1a5e38', textTransform: 'uppercase' }}>Dashboard Saluran</div>
+            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: -.8, margin: '8px 0 0' }}>Sebaran petani per wilayah</h2>
+            <p style={{ color: '#5b7a68', fontSize: 14, margin: '8px 0 0' }}>Ringkasan lokasi lahan terdaftar — ukuran lingkaran menunjukkan jumlah petani.</p>
+          </div>
+          <div style={{ margin: '24px 0 8px' }}>
+            <RegionMap points={net?.regions ?? []} height={400} />
+          </div>
+          {(net?.regions?.length ?? 0) === 0 && (
+            <div style={{ textAlign: 'center', color: '#5b7a68', fontSize: 13, marginBottom: 40 }}>Belum ada data lokasi lahan untuk dipetakan.</div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', margin: '8px 0 64px' }}>
+            {(net?.regions ?? []).slice(0, 8).map(r => (
+              <span key={r.province} style={{ background: '#fff', border: '1px solid #e3eee8', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#1a5e38' }}>
+                {r.province} · {r.farmers}
+              </span>
+            ))}
+          </div>
 
           {/* Cara Kerja */}
           <div style={{ textAlign: 'center', marginBottom: 14 }}>
@@ -185,8 +210,9 @@ export default function Landing() {
           </div>
 
           {/* CTA bawah */}
-          <div style={{ textAlign: 'center', marginTop: 56 }}>
+          <div style={{ textAlign: 'center', marginTop: 56, display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => nav('/login')} style={{ background: 'linear-gradient(150deg,#2d9b5f,#1a5e38)', color: '#fff', border: 'none', borderRadius: 13, padding: '15px 30px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 28px rgba(26,94,56,.25)' }}>Masuk ke Sistem →</button>
+            <button onClick={() => nav('/login?register=1')} style={{ background: '#fff', color: '#1a5e38', border: '1.5px solid #1a5e38', borderRadius: 13, padding: '15px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>🌾 Daftar sebagai Petani</button>
           </div>
         </div>
       </div>

@@ -1,10 +1,25 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { api } from '../api'
 import MapPicker from '../components/MapPicker'
 
 const regBlank = { username: '', password: '', fullName: '', nik: '', phone: '', farmerGroup: '', village: '', district: '', city: '', province: '', landAreaHa: '' }
+
+// Definisi field form registrasi + aturan validasi per-input.
+const REG_FIELDS: { k: string; label: string; type: string; req?: boolean; hint?: string; valid: (v: string) => boolean }[] = [
+  { k: 'username', label: 'Username', type: 'text', req: true, hint: 'min. 3 karakter', valid: v => v.trim().length >= 3 },
+  { k: 'password', label: 'Kata Sandi', type: 'password', req: true, hint: 'min. 6 karakter', valid: v => v.length >= 6 },
+  { k: 'fullName', label: 'Nama Lengkap', type: 'text', req: true, hint: 'min. 3 karakter', valid: v => v.trim().length >= 3 },
+  { k: 'nik', label: 'NIK', type: 'text', req: true, hint: 'tepat 16 angka', valid: v => /^\d{16}$/.test(v) },
+  { k: 'phone', label: 'No. Telepon', type: 'text', hint: '8–15 angka', valid: v => v === '' || /^\d{8,15}$/.test(v) },
+  { k: 'farmerGroup', label: 'Kelompok Tani', type: 'text', valid: () => true },
+  { k: 'village', label: 'Desa/Kelurahan', type: 'text', valid: () => true },
+  { k: 'district', label: 'Kecamatan', type: 'text', valid: () => true },
+  { k: 'city', label: 'Kota/Kabupaten', type: 'text', valid: () => true },
+  { k: 'province', label: 'Provinsi', type: 'text', valid: () => true },
+  { k: 'landAreaHa', label: 'Luas Lahan (ha)', type: 'number', hint: 'angka > 0', valid: v => v === '' || Number(v) > 0 },
+]
 
 const ROLES = [
   { id: 'PETANI', l: 'Petani', d: 'Input data panen & lihat kuota pupuk subsidi', icon: '🌾', c: '#16a34a', user: 'budi' },
@@ -29,12 +44,15 @@ export default function Login() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [params] = useSearchParams()
+  const [mode, setMode] = useState<'login' | 'register'>(params.get('register') ? 'register' : 'login')
   const [reg, setReg] = useState(regBlank)
   const [regGps, setRegGps] = useState({ lat: -6.2, lng: 106.816 })
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [regBusy, setRegBusy] = useState(false)
   const [regErr, setRegErr] = useState('')
   const [regDone, setRegDone] = useState(false)
+  const allValid = REG_FIELDS.every(f => (f.req ? (reg as Record<string, string>)[f.k].trim() !== '' : true) && f.valid((reg as Record<string, string>)[f.k]))
 
   const doRegister = async (e: React.FormEvent) => {
     e.preventDefault(); setRegBusy(true); setRegErr('')
@@ -99,33 +117,47 @@ export default function Login() {
               <button onClick={() => setMode('login')} style={{ marginTop: 16, padding: '10px 22px', borderRadius: 11, border: 'none', background: '#fff', color: 'var(--g700)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ke Halaman Masuk</button>
             </div>
           ) : (
-            <form onSubmit={doRegister} className="fade" style={{ maxWidth: 560, margin: '0 auto 18px', background: 'rgba(255,255,255,.07)', borderRadius: 16, padding: 22 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 14 }}>🌾 Daftar sebagai Petani</div>
+            <form onSubmit={doRegister} className="fade" style={{ maxWidth: 580, margin: '0 auto 18px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 16, padding: 24 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginBottom: 3 }}>🌾 Daftar sebagai Petani</div>
+              <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.5)', marginBottom: 16 }}>Lengkapi data; akun aktif setelah disetujui Kementan. Tanda <span style={{ color: '#fca5a5' }}>*</span> wajib.</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {[
-                  ['username', 'Username', 'text'], ['password', 'Kata Sandi', 'password'],
-                  ['fullName', 'Nama Lengkap', 'text'], ['nik', 'NIK (16 digit)', 'text'],
-                  ['phone', 'No. Telepon', 'text'], ['farmerGroup', 'Kelompok Tani', 'text'],
-                  ['village', 'Desa/Kelurahan', 'text'], ['district', 'Kecamatan', 'text'],
-                  ['city', 'Kota/Kabupaten', 'text'], ['province', 'Provinsi', 'text'],
-                  ['landAreaHa', 'Luas Lahan (ha)', 'number'],
-                ].map(([k, label, type]) => (
-                  <div key={k}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.7)', display: 'block', marginBottom: 4 }}>{label}</label>
-                    <input type={type} value={(reg as Record<string, string>)[k]} required={['username', 'password', 'fullName', 'nik'].includes(k)}
-                      onChange={e => setReg({ ...reg, [k]: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: '#fff', fontSize: 13 }} />
-                  </div>
-                ))}
+                {REG_FIELDS.map(f => {
+                  const val = (reg as Record<string, string>)[f.k]
+                  const empty = val.trim() === ''
+                  const showErr = touched[f.k] && ((f.req && empty) || !f.valid(val))
+                  const showOk = !empty && f.valid(val)
+                  const border = showErr ? '#fca5a5' : showOk ? '#86efac' : 'rgba(255,255,255,.2)'
+                  return (
+                    <div key={f.k}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.72)', display: 'block', marginBottom: 4 }}>
+                        {f.label} {f.req && <span style={{ color: '#fca5a5' }}>*</span>}
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input type={f.type} value={val}
+                          inputMode={f.k === 'nik' || f.k === 'phone' ? 'numeric' : f.type === 'number' ? 'decimal' : undefined}
+                          onChange={e => setReg({ ...reg, [f.k]: e.target.value })}
+                          onBlur={() => setTouched(t => ({ ...t, [f.k]: true }))}
+                          style={{ width: '100%', padding: '10px 28px 10px 12px', borderRadius: 10, border: `1.5px solid ${border}`, background: 'rgba(255,255,255,.08)', color: '#fff', fontSize: 13, outline: 'none' }} />
+                        {showOk && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#86efac', fontSize: 12 }}>✓</span>}
+                        {showErr && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#fca5a5', fontSize: 12 }}>✕</span>}
+                      </div>
+                      {(showErr || f.hint) && (
+                        <div style={{ fontSize: 10, marginTop: 3, color: showErr ? '#fca5a5' : 'rgba(255,255,255,.4)' }}>
+                          {showErr ? (empty ? 'Wajib diisi' : `Format tidak valid${f.hint ? ` (${f.hint})` : ''}`) : f.hint}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-              <div style={{ marginTop: 12 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.7)', display: 'block', marginBottom: 5 }}>Titik Lokasi Lahan (geser pin / klik peta)</label>
+              <div style={{ marginTop: 14 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.72)', display: 'block', marginBottom: 6 }}>📍 Titik Lokasi Lahan (geser pin / klik peta)</label>
                 <MapPicker lat={regGps.lat} lng={regGps.lng} onChange={(la, ln) => setRegGps({ lat: la, lng: ln })} height={200} />
                 <div className="mono" style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>{regGps.lat.toFixed(5)}, {regGps.lng.toFixed(5)}</div>
               </div>
-              {regErr && <div style={{ color: '#fca5a5', fontSize: 12, marginTop: 12 }}>{regErr}</div>}
-              <button disabled={regBusy} style={{ width: '100%', marginTop: 16, padding: '13px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', background: '#fff', color: 'var(--g700)' }}>
-                {regBusy ? 'Mengirim pendaftaran…' : 'Daftar — Menunggu Persetujuan Kementan'}
+              {regErr && <div style={{ color: '#fca5a5', fontSize: 12, marginTop: 12, background: 'rgba(220,38,38,.15)', padding: '8px 12px', borderRadius: 8 }}>{regErr}</div>}
+              <button disabled={regBusy || !allValid} style={{ width: '100%', marginTop: 16, padding: '13px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 700, cursor: regBusy || !allValid ? 'not-allowed' : 'pointer', background: allValid ? '#fff' : 'rgba(255,255,255,.35)', color: 'var(--g700)', opacity: allValid ? 1 : .8 }}>
+                {regBusy ? 'Mengirim pendaftaran…' : allValid ? 'Daftar — Menunggu Persetujuan Kementan' : 'Lengkapi data wajib (*)'}
               </button>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginTop: 10, textAlign: 'center' }}>NIK hanya disimpan sebagai hash SHA-256 di ledger.</div>
             </form>
