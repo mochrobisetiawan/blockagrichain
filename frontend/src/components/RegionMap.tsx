@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 
 // Peta sebaran (read-only) — plot lingkaran per wilayah, ukuran ∝ jumlah petani.
-// Leaflet via CDN (tanpa npm install), pola loader sama seperti MapPicker.
+// Leaflet via CDN (tanpa npm install). Tidak meng-augmentasi global Window.L
+// (sudah dideklarasikan di MapPicker) — akses lewat cast lokal agar tak bentrok.
 export interface RegionPoint { province: string; farmers: number; lat: number; lng: number }
 
 type LCircle = { addTo: (m: LMap) => LCircle; bindPopup: (s: string) => LCircle; remove: () => void }
@@ -11,11 +12,11 @@ type LType = {
   tileLayer: (url: string, opts: Record<string, unknown>) => { addTo: (m: LMap) => void }
   circleMarker: (latlng: [number, number], opts: Record<string, unknown>) => LCircle
 }
-declare global { interface Window { L?: LType } }
+const getL = (): LType | undefined => (window as unknown as { L?: LType }).L
 
 let loader: Promise<void> | null = null
 function loadLeaflet(): Promise<void> {
-  if (window.L) return Promise.resolve()
+  if (getL()) return Promise.resolve()
   if (loader) return loader
   loader = new Promise<void>((resolve, reject) => {
     const css = document.createElement('link')
@@ -39,7 +40,7 @@ export default function RegionMap({ points, height = 380 }: { points: RegionPoin
   useEffect(() => {
     let dead = false
     loadLeaflet().then(() => {
-      const L = window.L
+      const L = getL()
       if (dead || !L || !ref.current) return
       if (!map.current) {
         const m = L.map(ref.current, { scrollWheelZoom: false }).setView([-2.5, 118], 4) // Indonesia
