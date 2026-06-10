@@ -56,16 +56,28 @@ export default function Profil() {
       <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 12 }}>Profil Saya</div>
 
       {/* Profil */}
-      <div className="card" style={{ marginBottom: 12 }}>
-        {!editing ? (
-          <>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{data?.fullName}</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>Kelompok: {data?.farmerGroup ?? '—'}</div>
-            <div className="muted" style={{ fontSize: 12 }}>Telp: {data?.phone ?? '—'}</div>
-            <div className="muted mono" style={{ fontSize: 11, marginTop: 4 }}>ID: {data?.farmerChainId}</div>
-            <button className="btn sm" style={{ marginTop: 10 }} onClick={openEdit}>✏️ Edit Profil</button>
-          </>
-        ) : (
+      {!editing ? (
+        <div className="card" style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
+          <div style={{ background: 'linear-gradient(135deg,#1a5e38,#2d9b5f)', padding: '18px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,.22)', display: 'grid', placeItems: 'center', fontSize: 22, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+              {(data?.fullName?.[0] ?? 'P').toUpperCase()}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data?.fullName}</div>
+              <div className="mono" style={{ fontSize: 11, color: 'rgba(255,255,255,.85)' }}>{data?.farmerChainId}</div>
+            </div>
+          </div>
+          <div style={{ padding: 14 }}>
+            {[['Kelompok Tani', data?.farmerGroup ?? '—'], ['No. Telepon', data?.phone ?? '—']].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <span className="muted">{k}</span><span style={{ fontWeight: 600 }}>{v}</span>
+              </div>
+            ))}
+            <button className="btn sm" style={{ marginTop: 12, width: '100%', justifyContent: 'center' }} onClick={openEdit}>✏️ Edit Profil</button>
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ marginBottom: 12 }}>
           <form onSubmit={saveProfile}>
             <div className="field"><label>Nama Lengkap</label><input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} required /></div>
             <div className="field"><label>Kelompok Tani</label><input value={form.farmerGroup} onChange={e => setForm({ ...form, farmerGroup: e.target.value })} /></div>
@@ -75,8 +87,8 @@ export default function Profil() {
               <button type="button" className="btn sm secondary" onClick={() => setEditing(false)}>Batal</button>
             </div>
           </form>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Ganti kata sandi */}
       <div className="card" style={{ marginBottom: 12 }}>

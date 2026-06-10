@@ -27,7 +27,7 @@ export default function Distributions() {
   const { data: orders, loading, reload } = useApi<Order[]>('/distributions')
   const { data: ready, reload: reloadReady } = useApi<Ready[]>(isPihc ? '/distributions/ready' : null)
   const [detail, setDetail] = useState<Order | null>(null)
-  const { pageItems: pagedOrders, pager } = usePaged(orders, 9)
+  const { pageItems: pagedOrders, pager } = usePaged(orders, isFarmer ? 5 : 9)
   const [claimOpen, setClaimOpen] = useState<Record<number, boolean>>({})
   const [claimAmt, setClaimAmt] = useState<Record<number, string>>({})
   const distStage = (o: Order) => o.payment?.status === 'DISBURSED' ? 6 : o.payment?.status === 'REQUESTED' ? 5

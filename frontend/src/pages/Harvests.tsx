@@ -184,7 +184,7 @@ export default function Harvests() {
   const isBulog = user?.role === 'BULOG'
   const isFarmer = user?.role === 'FARMER'
   const { data, loading, reload } = useApi<Harvest[]>(isBulog ? '/harvests/pending' : '/harvests')
-  const { pageItems, pager } = usePaged(data, 9)
+  const { pageItems, pager } = usePaged(data, isFarmer ? 5 : 9)
   const [modal, setModal] = useState<Harvest | null>(null)
   const [detail, setDetail] = useState<Harvest | null>(null)
   const hStage = (st: string) => st === 'VERIFIED' ? 2 : 1

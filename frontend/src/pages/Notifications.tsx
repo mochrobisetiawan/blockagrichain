@@ -8,7 +8,7 @@ interface Notif {
 
 export default function Notifications() {
   const { data, loading, reload } = useApi<Notif[]>('/notifications')
-  const { pageItems, pager } = usePaged(data, 8)
+  const { pageItems, pager } = usePaged(data, 5)
   const markRead = async (id: number) => { await api.post(`/notifications/${id}/read`); reload() }
 
   return (
