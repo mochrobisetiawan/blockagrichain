@@ -61,6 +61,7 @@ func (s *Server) Router() http.Handler {
 		r.Get("/health", func(w http.ResponseWriter, _ *http.Request) { s.json(w, 200, map[string]string{"status": "ok"}) })
 		r.Get("/public/network", s.publicNetwork) // status jaringan real untuk landing (tanpa auth)
 		r.Post("/auth/login", s.login)
+		r.Post("/auth/register", s.registerFarmer) // petani daftar mandiri (publik) → pending approve Kementan
 
 		// IoT ingest (ESP32-CAM kirim gambar timbangan) — Bearer JWT atau X-IoT-Key.
 		r.Post("/iot/weight", s.iotWeight)
@@ -105,6 +106,8 @@ func (s *Server) Router() http.Handler {
 			r.With(auth.RequireRoles(models.RoleFarmer)).Post("/farmers/me/lands", s.addLand)
 			r.With(auth.RequireRoles(models.RoleBulog, models.RoleKementan, models.RoleKemenkeu, models.RolePihc)).Get("/farmers", s.listFarmers)
 			r.With(auth.RequireRoles(models.RoleKementan)).Post("/farmers", s.createFarmer)
+			r.With(auth.RequireRoles(models.RoleKementan)).Get("/farmers/pending", s.pendingFarmers)
+			r.With(auth.RequireRoles(models.RoleKementan)).Post("/farmers/{id}/approve", s.approveFarmer)
 			r.With(auth.RequireRoles(models.RoleKementan)).Post("/farmers/{id}/disable", s.disableFarmer)
 
 			// IoT image proxy (Bulog lihat foto timbangan dari S3 privat)

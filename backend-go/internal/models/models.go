@@ -74,6 +74,9 @@ type Farmer struct {
 	AddressDetail   *string    `gorm:"column:address_detail" json:"addressDetail,omitempty"`
 	FarmerGroup     *string    `gorm:"column:farmer_group;size:100" json:"farmerGroup,omitempty"`
 	FarmerChainID   string     `gorm:"column:farmer_chain_id;size:128" json:"farmerChainId"`
+	// Status pendaftaran: APPROVED (didaftarkan Kementan / sudah disetujui) atau
+	// PENDING (petani daftar mandiri, menunggu persetujuan Kementan).
+	RegStatus string `gorm:"column:reg_status;size:20;default:APPROVED" json:"regStatus"`
 
 	User      *User      `gorm:"foreignKey:UserID" json:"-"`
 	FarmLands []FarmLand `gorm:"foreignKey:FarmerID" json:"-"`

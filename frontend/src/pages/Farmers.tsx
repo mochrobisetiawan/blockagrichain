@@ -8,6 +8,10 @@ interface FarmerRow {
   id: number; fullName: string; farmerGroup: string; phone: string; farmerChainId: string
   isActive: boolean; province: string | null
 }
+interface PendingRow {
+  id: number; fullName: string; username: string; farmerGroup?: string; phone?: string
+  province?: string; city?: string; landAreaHa?: number
+}
 
 const blank = { username: '', password: '', fullName: '', nik: '', farmerGroup: '', phone: '', village: '', district: '', city: '', province: '', landAreaHa: '' }
 
@@ -17,10 +21,16 @@ export default function Farmers() {
   const { data, loading, reload } = useApi<FarmerRow[]>('/farmers')
   const isKementan = user?.role === 'KEMENTAN'
   const canAdd = user?.role === 'KEMENTAN'   // hanya Kementan yang mendaftarkan petani
+  const { data: pending, reload: reloadPending } = useApi<PendingRow[]>(isKementan ? '/farmers/pending' : null)
 
   const [adding, setAdding] = useState(false)
   const [f, setF] = useState(blank)
   const [busy, setBusy] = useState(false)
+
+  const approve = async (id: number) => {
+    try { await api.post(`/farmers/${id}/approve`); toast('Petani disetujui & terdaftar on-chain'); reload(); reloadPending() }
+    catch (ex) { toast((ex as Error).message, 'error') }
+  }
 
   const disable = async (id: number) => {
     if (!confirm('Nonaktifkan akun petani ini? (soft-delete on-chain)')) return
@@ -72,6 +82,23 @@ export default function Farmers() {
           </div>
           <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>Petani dapat mengganti kata sandi sendiri di menu Profil. NIK hanya disimpan sebagai SHA-256 di ledger.</p>
         </form>
+      )}
+
+      {isKementan && (pending?.length ?? 0) > 0 && (
+        <div className="card" style={{ marginTop: 16, borderColor: '#fcd34d', background: '#fffbeb' }}>
+          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 10, color: '#92400e' }}>⏳ Pendaftaran Menunggu Persetujuan ({pending?.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pending?.map(pr => (
+              <div key={pr.id} style={{ background: '#fff', borderRadius: 10, padding: '11px 14px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{pr.fullName} <span className="muted" style={{ fontWeight: 400 }}>@{pr.username}</span></div>
+                  <div className="muted" style={{ fontSize: 11 }}>{[pr.city, pr.province].filter(Boolean).join(', ') || '—'} · {pr.landAreaHa ?? 0} ha · {pr.farmerGroup ?? '—'}{pr.phone ? ` · ${pr.phone}` : ''}</div>
+                </div>
+                <button className="btn sm" style={{ background: '#1a5e38', color: '#fff' }} onClick={() => approve(pr.id)}>✓ Setujui & Daftarkan On-Chain</button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="card" style={{ marginTop: 16, padding: 0 }}>

@@ -30,6 +30,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !u.IsActive {
+		var f models.Farmer
+		if s.db.Where("user_id = ? AND reg_status = ?", u.ID, "PENDING").First(&f).Error == nil {
+			s.json(w, http.StatusUnauthorized, map[string]any{"error": "Akun menunggu persetujuan Kementan"})
+			return
+		}
 		s.json(w, http.StatusUnauthorized, map[string]any{"error": "Akun dinonaktifkan"})
 		return
 	}

@@ -154,7 +154,7 @@ func (s *Server) createFarmer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	chainID := fmt.Sprintf("F-%04d", u.ID)
-	f := models.Farmer{UserID: u.ID, Nik: req.Nik, FullName: req.FullName, FarmerChainID: chainID}
+	f := models.Farmer{UserID: u.ID, Nik: req.Nik, FullName: req.FullName, FarmerChainID: chainID, RegStatus: "APPROVED"}
 	if req.FarmerGroup != "" {
 		f.FarmerGroup = &req.FarmerGroup
 	}
@@ -181,6 +181,135 @@ func (s *Server) createFarmer(w http.ResponseWriter, r *http.Request) {
 	tx := proof.TxID
 	s.json(w, 200, map[string]any{"id": f.ID, "username": u.Username, "farmerChainId": chainID,
 		"txId": tx, "proof": proofOf(proof)})
+}
+
+// registerFarmer — POST /api/auth/register (PUBLIK) — petani mendaftar mandiri.
+// Akun dibuat NONAKTIF + status PENDING; belum ditulis ke ledger. Kementan yang
+// menyetujui (saat itu baru RegisterFarmer on-chain & akun diaktifkan).
+func (s *Server) registerFarmer(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Username    string   `json:"username"`
+		Password    string   `json:"password"`
+		FullName    string   `json:"fullName"`
+		Nik         string   `json:"nik"`
+		FarmerGroup string   `json:"farmerGroup"`
+		Phone       string   `json:"phone"`
+		Village     string   `json:"village"`
+		District    string   `json:"district"`
+		City        string   `json:"city"`
+		Province    string   `json:"province"`
+		LandAreaHa  float64  `json:"landAreaHa"`
+		GpsLat      *float64 `json:"gpsLat"`
+		GpsLng      *float64 `json:"gpsLng"`
+	}
+	if err := decode(r, &req); err != nil || req.Username == "" || req.Password == "" || req.FullName == "" || req.Nik == "" {
+		s.bad(w, "username, password, fullName, dan NIK wajib diisi")
+		return
+	}
+	var dup int64
+	s.db.Model(&models.User{}).Where("username = ?", req.Username).Count(&dup)
+	if dup > 0 {
+		s.bad(w, "Username sudah dipakai")
+		return
+	}
+	cn, err := s.fab.ClientCN(models.MSPForRole(models.RoleFarmer))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	u := models.User{
+		Username: req.Username, Email: req.Username + "@blockagrichain.id",
+		PasswordHash: auth.HashPassword(req.Password), Role: models.RoleFarmer,
+		MspID: models.MSPForRole(models.RoleFarmer), FabricClientID: cn, IsActive: false, CreatedAt: time.Now(),
+	}
+	if err := s.db.Create(&u).Error; err != nil {
+		s.fail(w, err)
+		return
+	}
+	chainID := fmt.Sprintf("F-%04d", u.ID)
+	f := models.Farmer{UserID: u.ID, Nik: req.Nik, FullName: req.FullName, FarmerChainID: chainID, RegStatus: "PENDING"}
+	if req.FarmerGroup != "" {
+		f.FarmerGroup = &req.FarmerGroup
+	}
+	if req.Phone != "" {
+		f.Phone = &req.Phone
+	}
+	s.db.Create(&f)
+	if req.Village != "" {
+		s.db.Create(&models.FarmLand{FarmerID: f.ID, Village: req.Village, District: req.District, City: req.City,
+			Province: req.Province, LandAreaHa: req.LandAreaHa, GpsLat: req.GpsLat, GpsLng: req.GpsLng, IsPrimary: true})
+	}
+	s.notify(models.RoleKementan, "FarmerRegistration", "Pendaftaran petani baru",
+		req.FullName+" mendaftar sebagai petani — menunggu persetujuan.", "", nil)
+	s.json(w, 200, map[string]any{"status": "PENDING", "message": "Pendaftaran terkirim. Menunggu persetujuan Kementan."})
+}
+
+// pendingFarmers — GET /farmers/pending (Kementan) — daftar pendaftaran menunggu.
+func (s *Server) pendingFarmers(w http.ResponseWriter, _ *http.Request) {
+	var list []models.Farmer
+	s.db.Preload("User").Preload("FarmLands").Where("reg_status = ?", "PENDING").Find(&list)
+	out := make([]map[string]any, 0, len(list))
+	for i := range list {
+		f := &list[i]
+		province, city, area := "", "", 0.0
+		for _, l := range f.FarmLands {
+			if l.IsPrimary || province == "" {
+				province, city, area = l.Province, l.City, l.LandAreaHa
+			}
+		}
+		username := ""
+		if f.User != nil {
+			username = f.User.Username
+		}
+		out = append(out, map[string]any{"id": f.ID, "fullName": f.FullName, "farmerGroup": f.FarmerGroup,
+			"phone": f.Phone, "farmerChainId": f.FarmerChainID, "username": username,
+			"province": province, "city": city, "landAreaHa": area})
+	}
+	s.json(w, 200, out)
+}
+
+// approveFarmer — POST /farmers/{id}/approve (Kementan) — setujui pendaftaran:
+// registrasi on-chain (RegisterFarmer) + aktifkan akun.
+func (s *Server) approveFarmer(w http.ResponseWriter, r *http.Request) {
+	p := auth.From(r.Context())
+	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	var f models.Farmer
+	if err := s.db.Preload("User").Preload("FarmLands").First(&f, id).Error; err != nil {
+		s.notFound(w, "Petani tidak ditemukan")
+		return
+	}
+	if f.RegStatus != "PENDING" {
+		s.bad(w, "Pendaftaran ini bukan berstatus PENDING")
+		return
+	}
+	if f.User == nil {
+		s.bad(w, "Akun petani tidak lengkap")
+		return
+	}
+	region, area := "-", 0.0
+	for _, l := range f.FarmLands {
+		if l.IsPrimary || region == "-" {
+			if l.Province != "" {
+				region = l.Province
+			}
+			area = l.LandAreaHa
+		}
+	}
+	landM2 := strconv.Itoa(int(area * 10000))
+	_, proof, err := s.fab.Submit(models.MSPForRole(models.RoleFarmer), "RegisterFarmer",
+		f.FarmerChainID, f.User.FabricClientID, auth.Sha256Hex(f.Nik), landM2, region)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	f.RegStatus = "APPROVED"
+	s.db.Save(&f)
+	s.db.Model(&models.User{}).Where("id = ?", f.User.ID).Update("is_active", true)
+	uid := f.User.ID
+	tx := proof.TxID
+	s.notify(models.RoleFarmer, "RegistrationApproved", "Pendaftaran disetujui",
+		"Akun Anda telah disetujui Kementan & terdaftar on-chain. Silakan login.", tx, &uid)
+	s.json(w, 200, map[string]any{"id": f.ID, "farmerChainId": f.FarmerChainID, "proof": proofOf(proof)})
 }
 
 func (s *Server) farmerMe(w http.ResponseWriter, r *http.Request) {
