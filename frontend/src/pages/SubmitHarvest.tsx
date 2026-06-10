@@ -4,7 +4,7 @@ import { useApi } from '../hooks'
 import { ChainProofBox, useToast } from '../ui'
 import MapPicker from '../components/MapPicker'
 
-interface Land { id: number; village: string; district: string; province: string; landAreaHa: number; gpsLat: number; gpsLng: number; isPrimary: boolean }
+interface Land { id: number; village: string; district: string; city?: string; province: string; landAreaHa: number; gpsLat: number; gpsLng: number; isPrimary: boolean }
 interface Profile { lands: Land[] }
 
 export default function SubmitHarvest() {
@@ -89,7 +89,7 @@ export default function SubmitHarvest() {
             <label>Lokasi Lahan</label>
             <input className="mono" value={`${land.gpsLat}, ${land.gpsLng}`} readOnly style={{ marginBottom: 8 }} />
             <MapPicker lat={land.gpsLat} lng={land.gpsLng} onChange={() => {}} height={220} />
-            <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>📍 {land.village}, {land.district}, {land.province}</div>
+            <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>📍 {[land.village, land.district, land.city, land.province].filter(Boolean).join(', ')}</div>
           </div>
         )}
 

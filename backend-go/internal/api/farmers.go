@@ -47,6 +47,31 @@ func (s *Server) updateFarmerMe(w http.ResponseWriter, r *http.Request) {
 	s.json(w, 200, map[string]any{"ok": true})
 }
 
+// changePassword — PATCH /farmers/me/password (petani ganti kata sandi sendiri).
+func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
+	p := auth.From(r.Context())
+	var req struct {
+		OldPassword string `json:"oldPassword"`
+		NewPassword string `json:"newPassword"`
+	}
+	if err := decode(r, &req); err != nil || len(req.NewPassword) < 6 {
+		s.bad(w, "Kata sandi baru minimal 6 karakter")
+		return
+	}
+	var u models.User
+	if err := s.db.First(&u, p.UserID).Error; err != nil {
+		s.notFound(w, "Pengguna tidak ditemukan")
+		return
+	}
+	if !auth.VerifyPassword(u.PasswordHash, req.OldPassword) {
+		s.bad(w, "Kata sandi lama salah")
+		return
+	}
+	u.PasswordHash = auth.HashPassword(req.NewPassword)
+	s.db.Save(&u)
+	s.json(w, 200, map[string]any{"ok": true})
+}
+
 // addLand — POST /farmers/me/lands (petani tambah lahan, off-chain).
 func (s *Server) addLand(w http.ResponseWriter, r *http.Request) {
 	p := auth.From(r.Context())
@@ -58,6 +83,7 @@ func (s *Server) addLand(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Village    string   `json:"village"`
 		District   string   `json:"district"`
+		City       string   `json:"city"`
 		Province   string   `json:"province"`
 		LandAreaHa float64  `json:"landAreaHa"`
 		GpsLat     *float64 `json:"gpsLat"`
@@ -69,7 +95,7 @@ func (s *Server) addLand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	land := models.FarmLand{
-		FarmerID: f.ID, Village: req.Village, District: req.District, Province: req.Province,
+		FarmerID: f.ID, Village: req.Village, District: req.District, City: req.City, Province: req.Province,
 		LandAreaHa: req.LandAreaHa, GpsLat: req.GpsLat, GpsLng: req.GpsLng, IsPrimary: req.IsPrimary,
 	}
 	if err := s.db.Create(&land).Error; err != nil {
@@ -93,6 +119,7 @@ func (s *Server) createFarmer(w http.ResponseWriter, r *http.Request) {
 		Phone       string   `json:"phone"`
 		Village     string   `json:"village"`
 		District    string   `json:"district"`
+		City        string   `json:"city"`
 		Province    string   `json:"province"`
 		LandAreaHa  float64  `json:"landAreaHa"`
 		GpsLat      *float64 `json:"gpsLat"`
@@ -136,7 +163,7 @@ func (s *Server) createFarmer(w http.ResponseWriter, r *http.Request) {
 	}
 	s.db.Create(&f)
 	if req.Village != "" {
-		s.db.Create(&models.FarmLand{FarmerID: f.ID, Village: req.Village, District: req.District,
+		s.db.Create(&models.FarmLand{FarmerID: f.ID, Village: req.Village, District: req.District, City: req.City,
 			Province: req.Province, LandAreaHa: req.LandAreaHa, GpsLat: req.GpsLat, GpsLng: req.GpsLng, IsPrimary: true})
 	}
 	// On-chain: registrasi petani (submit memakai identitas PetaniMSP yang dipegang server).
@@ -165,7 +192,7 @@ func (s *Server) farmerMe(w http.ResponseWriter, r *http.Request) {
 	}
 	lands := make([]map[string]any, 0, len(f.FarmLands))
 	for _, l := range f.FarmLands {
-		lands = append(lands, map[string]any{"id": l.ID, "village": l.Village, "district": l.District,
+		lands = append(lands, map[string]any{"id": l.ID, "village": l.Village, "district": l.District, "city": l.City,
 			"province": l.Province, "landAreaHa": l.LandAreaHa, "gpsLat": l.GpsLat, "gpsLng": l.GpsLng, "isPrimary": l.IsPrimary})
 	}
 	var onChain chain.FarmerRecord

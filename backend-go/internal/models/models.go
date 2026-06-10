@@ -87,6 +87,7 @@ type FarmLand struct {
 	LandAreaHa float64  `gorm:"column:land_area_ha" json:"landAreaHa"`
 	Village    string   `gorm:"column:village;size:100" json:"village"`
 	District   string   `gorm:"column:district;size:100" json:"district"`
+	City       string   `gorm:"column:city;size:100" json:"city"`
 	Province   string   `gorm:"column:province;size:100" json:"province"`
 	GpsLat     *float64 `gorm:"column:gps_lat" json:"gpsLat,omitempty"`
 	GpsLng     *float64 `gorm:"column:gps_lng" json:"gpsLng,omitempty"`

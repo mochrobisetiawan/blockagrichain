@@ -24,7 +24,7 @@ func projectHarvest(h *models.Harvest) map[string]any {
 		out["farmer"] = map[string]any{"fullName": h.Farmer.FullName, "farmerGroup": h.Farmer.FarmerGroup, "farmerChainId": h.Farmer.FarmerChainID}
 	}
 	if h.Land != nil {
-		out["land"] = map[string]any{"village": h.Land.Village, "district": h.Land.District,
+		out["land"] = map[string]any{"village": h.Land.Village, "district": h.Land.District, "city": h.Land.City,
 			"province": h.Land.Province, "landAreaHa": h.Land.LandAreaHa, "gpsLat": h.Land.GpsLat, "gpsLng": h.Land.GpsLng}
 	}
 	if h.Verification != nil {
