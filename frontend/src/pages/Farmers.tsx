@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
-import { Badge, Empty, useToast } from '../ui'
+import { Badge, Empty, useToast, usePaged } from '../ui'
 
 interface FarmerRow {
   id: number; fullName: string; farmerGroup: string; phone: string; farmerChainId: string
@@ -26,11 +26,7 @@ export default function Farmers() {
   const [adding, setAdding] = useState(false)
   const [f, setF] = useState(blank)
   const [busy, setBusy] = useState(false)
-  const [page, setPage] = useState(0)
-  const PER = 8
-  const total = data?.length ?? 0
-  const pageCount = Math.max(1, Math.ceil(total / PER))
-  const paged = (data ?? []).slice(page * PER, page * PER + PER)
+  const { pageItems: paged, pager, total } = usePaged(data, 8)
 
   const approve = async (id: number) => {
     try { await api.post(`/farmers/${id}/approve`); toast('Petani disetujui & terdaftar on-chain'); reload(); reloadPending() }
@@ -124,16 +120,7 @@ export default function Farmers() {
             ))}
           </tbody>
         </table>
-        {total > PER && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-            <span className="muted" style={{ fontSize: 12 }}>Menampilkan {page * PER + 1}–{Math.min((page + 1) * PER, total)} dari {total}</span>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button className="btn sm secondary" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>← Sebelumnya</button>
-              <span style={{ fontSize: 12, fontWeight: 700 }}>{page + 1}/{pageCount}</span>
-              <button className="btn sm secondary" disabled={page >= pageCount - 1} onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}>Berikutnya →</button>
-            </div>
-          </div>
-        )}
+        <div style={{ padding: '0 12px' }}>{pager}</div>
       </div>
     </div>
   )
