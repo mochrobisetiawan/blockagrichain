@@ -164,6 +164,32 @@ func (s *Server) iotOptionalImage(r *http.Request, field string) string {
 	return u
 }
 
+// iotAllImages — unggah SEMUA part file bernama `field` (berurutan) ke S3 dan
+// kembalikan daftar URL. Dipakai endpoint value yang menerima 2 gambar 'image'
+// (urutan: [0] display timbangan, [1] tumpukan panen versi Bulog).
+func (s *Server) iotAllImages(r *http.Request, field string) []string {
+	out := []string{}
+	for _, hdr := range r.MultipartForm.File[field] {
+		f, e := hdr.Open()
+		if e != nil {
+			continue
+		}
+		data, e2 := io.ReadAll(io.LimitReader(f, 12<<20))
+		f.Close()
+		if e2 != nil || len(data) == 0 {
+			continue
+		}
+		ct := hdr.Header.Get("Content-Type")
+		if ct == "" {
+			ct = "image/jpeg"
+		}
+		if u, _, e3 := s.s3.Put(r.Context(), "iot", hdr.Filename, ct, data); e3 == nil {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
 // iotFindHarvest — cari panen dari field 'harvestId' atau 'harvestChainId'.
 func (s *Server) iotFindHarvest(w http.ResponseWriter, r *http.Request) (models.Harvest, bool) {
 	var h models.Harvest
@@ -212,38 +238,22 @@ func (s *Server) iotWeightValue(w http.ResponseWriter, r *http.Request) {
 		deviceID = r.FormValue("deviceId")
 	}
 
-	// Gambar opsional sebagai bukti — pilih part terbesar bila ada.
-	var imgURL string
-	if files := r.MultipartForm.File["image"]; len(files) > 0 {
-		hdr := files[0]
-		for _, fh := range files {
-			if fh.Size > hdr.Size {
-				hdr = fh
-			}
-		}
-		if f, e := hdr.Open(); e == nil {
-			defer f.Close()
-			if data, e2 := io.ReadAll(io.LimitReader(f, 12<<20)); e2 == nil {
-				ct := hdr.Header.Get("Content-Type")
-				if ct == "" {
-					ct = "image/jpeg"
-				}
-				if u, _, e3 := s.s3.Put(r.Context(), "iot", hdr.Filename, ct, data); e3 == nil {
-					imgURL = u
-				}
-			}
-		}
+	// Endpoint value menerima 2 file bernama 'image': [0] display timbangan,
+	// [1] tumpukan panen versi Bulog. (pileImage tetap didukung sebagai alias.)
+	imgs := s.iotAllImages(r, "image")
+	if pile := s.iotOptionalImage(r, "pileImage"); pile != "" {
+		imgs = append(imgs, pile)
 	}
 
 	h.IoTWeightKg = &val
-	if imgURL != "" {
-		h.IoTImageURL = &imgURL
+	if len(imgs) > 0 {
+		h.IoTImageURL = &imgs[0]
+	}
+	if len(imgs) > 1 {
+		h.BulogPhotoURL = &imgs[1]
 	}
 	if deviceID != "" {
 		h.IoTDeviceID = &deviceID
-	}
-	if pile := s.iotOptionalImage(r, "pileImage"); pile != "" { // foto tumpukan panen versi Bulog
-		h.BulogPhotoURL = &pile
 	}
 	src := "value(direct)"
 	h.IoTOcrRaw = &src
@@ -257,7 +267,7 @@ func (s *Server) iotWeightValue(w http.ResponseWriter, r *http.Request) {
 		"Berat timbangan untuk panen "+h.HarvestChainID+devNote+" siap diverifikasi.", "", nil)
 
 	s.json(w, http.StatusOK, map[string]any{
-		"harvestId": h.ID, "deviceId": deviceID, "ocrWeight": val, "hasImage": imgURL != "",
+		"harvestId": h.ID, "deviceId": deviceID, "ocrWeight": val, "imageCount": len(imgs),
 	})
 }
 

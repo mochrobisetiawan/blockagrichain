@@ -113,7 +113,7 @@
             { "key": "deviceId", "value": "{{deviceId}}", "type": "text" },
             { "key": "ocrWeight", "value": "1000", "type": "text" },
             { "key": "image", "type": "file", "src": "", "disabled": true },
-            { "key": "pileImage", "type": "file", "src": "", "disabled": true }
+            { "key": "image", "type": "file", "src": "", "disabled": true }
           ]
         },
         "url": {
@@ -121,7 +121,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["api", "iot-value", "weight"]
         },
-        "description": "Kirim BERAT langsung tanpa OCR. Field 'ocrWeight' (kg) WAJIB. 'image' OPSIONAL (aktifkan bila mau lampirkan bukti foto). Mewarisi Bearer {{token}}."
+        "description": "Kirim BERAT langsung tanpa OCR. 'ocrWeight' (kg) WAJIB. Boleh kirim DUA file bernama 'image': urutan ke-1 = display timbangan, ke-2 = tumpukan panen Bulog. Aktifkan baris image sesuai kebutuhan. Mewarisi Bearer {{token}}."
       }
     },
     {
