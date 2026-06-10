@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, shortTx } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
-import { Empty, useToast } from '../ui'
+import { Empty, useToast, usePaged } from '../ui'
 
 interface Block {
   blockNumber: number; txId: string; functionName: string; key: string
@@ -24,6 +24,7 @@ export default function Explorer() {
   const { data: blocks, loading } = useApi<Block[]>('/ledger/blocks?take=100')
   const [integrity, setIntegrity] = useState<Integrity | null>(null)
   const [checking, setChecking] = useState(false)
+  const { pageItems, pager } = usePaged(blocks, 12)
 
   const check = async () => {
     setChecking(true)
@@ -57,7 +58,7 @@ export default function Explorer() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
         {loading && <Empty text="Memuat ledger…" />}
         {!loading && (blocks?.length ?? 0) === 0 && <Empty text="Belum ada transaksi" />}
-        {blocks?.map((b, i) => (
+        {pageItems.map((b, i) => (
           <div key={i} style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ width: 66, height: 38, background: 'var(--g900)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)' }}>BLOCK</div>
@@ -77,6 +78,7 @@ export default function Explorer() {
           </div>
         ))}
       </div>
+      {pager}
     </div>
   )
 }

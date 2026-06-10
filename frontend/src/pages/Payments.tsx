@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, fmtRpFull, shortTx } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
-import { Badge, Empty, useToast } from '../ui'
+import { Badge, Empty, useToast, usePaged } from '../ui'
 
 interface Payment {
   id: number; amountIdr: number; status: string; kemenkeuRef?: string; blockchainTxId?: string
@@ -14,6 +14,7 @@ export default function Payments() {
   const toast = useToast()
   const { data, loading, reload } = useApi<Payment[]>('/payments')
   const isKemenkeu = user?.role === 'KEMENKEU'
+  const { pageItems, pager } = usePaged(data, 8)
   const [rejectId, setRejectId] = useState<number | null>(null)
   const [reason, setReason] = useState('')
 
@@ -40,7 +41,7 @@ export default function Payments() {
           <tbody>
             {loading && <tr><td colSpan={7}><Empty text="Memuat…" /></td></tr>}
             {!loading && data?.length === 0 && <tr><td colSpan={7}><Empty text="Belum ada klaim subsidi" /></td></tr>}
-            {data?.map(p => (
+            {pageItems.map(p => (
               <tr key={p.id}>
                 <td className="mono">{p.distribution?.distributionChainId}</td>
                 <td>{p.distribution?.farmer}</td>
@@ -68,6 +69,7 @@ export default function Payments() {
           </tbody>
         </table>
       </div>
+      {pager}
     </div>
   )
 }

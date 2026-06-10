@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, fmtRp } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
-import { Badge, Empty, useToast } from '../ui'
+import { Badge, Empty, useToast, usePaged } from '../ui'
 
 const C = { g700: '#1a5e38', blue: '#2563eb', purple: '#7c3aed' }
 
@@ -15,6 +15,7 @@ export default function Policies() {
   const { user } = useAuth()
   const toast = useToast()
   const { data, loading, reload } = useApi<Policy[]>('/policies')
+  const { pageItems, pager } = usePaged(data, 6)
   const [form, setForm] = useState({ name: '', urea: '50', npk: '35', organic: '24', budget: '6000000000000', date: '2026-07-01' })
   const [busy, setBusy] = useState(false)
 
@@ -61,7 +62,7 @@ export default function Policies() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 16 }}>
         {loading && <Empty text="Memuat…" />}
         {!loading && (data?.length ?? 0) === 0 && <Empty text="Belum ada kebijakan" />}
-        {data?.map(p => (
+        {pageItems.map(p => (
           <div key={p.id} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <div>
@@ -86,6 +87,7 @@ export default function Policies() {
           </div>
         ))}
       </div>
+      {pager}
     </div>
   )
 }

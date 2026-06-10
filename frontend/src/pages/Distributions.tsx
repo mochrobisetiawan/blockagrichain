@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, shortTx } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
-import { Badge, Empty, useToast } from '../ui'
+import { Badge, Empty, useToast, usePaged } from '../ui'
 import DetailModal from '../components/DetailModal'
 
 const C = { g700: '#1a5e38', g600: '#22773f', blue: '#2563eb', amber: '#d97706' }
@@ -27,6 +27,7 @@ export default function Distributions() {
   const { data: orders, loading, reload } = useApi<Order[]>('/distributions')
   const { data: ready, reload: reloadReady } = useApi<Ready[]>(isPihc ? '/distributions/ready' : null)
   const [detail, setDetail] = useState<Order | null>(null)
+  const { pageItems: pagedOrders, pager } = usePaged(orders, 9)
   const [claimOpen, setClaimOpen] = useState<Record<number, boolean>>({})
   const [claimAmt, setClaimAmt] = useState<Record<number, string>>({})
   const distStage = (o: Order) => o.payment?.status === 'DISBURSED' ? 6 : o.payment?.status === 'REQUESTED' ? 5
@@ -88,7 +89,7 @@ export default function Distributions() {
       <div style={{ fontSize: 14, fontWeight: 800, margin: '22px 0 12px' }}>Order Distribusi {isFarmer ? '' : 'Aktif'}</div>
       {loading ? <Empty text="Memuat…" /> : (orders?.length ?? 0) === 0 ? <Empty text="Belum ada order distribusi" /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 14 }}>
-          {orders?.map(o => (
+          {pagedOrders.map(o => (
             <div key={o.id} style={{ background: '#fff', borderRadius: 16, padding: 18, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><Badge status={o.status} /><span style={{ fontSize: 11, color: 'var(--txtS)' }}>{o.scheduledDate ?? ''}</span></div>
               <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>{o.farmer?.fullName ?? '—'}</div>
@@ -118,6 +119,7 @@ export default function Distributions() {
           ))}
         </div>
       )}
+      {pager}
 
       {detail && (
         <DetailModal type="DIST" id={detail.distributionChainId} stage={distStage(detail)}

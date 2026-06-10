@@ -1,6 +1,6 @@
 import { api, shortTx } from '../api'
 import { useApi } from '../hooks'
-import { Empty } from '../ui'
+import { Empty, usePaged } from '../ui'
 
 interface Notif {
   id: number; eventName: string; title: string; body: string; blockchainTxId?: string; isRead: boolean; createdAt: string
@@ -8,6 +8,7 @@ interface Notif {
 
 export default function Notifications() {
   const { data, loading, reload } = useApi<Notif[]>('/notifications')
+  const { pageItems, pager } = usePaged(data, 8)
   const markRead = async (id: number) => { await api.post(`/notifications/${id}/read`); reload() }
 
   return (
@@ -18,7 +19,7 @@ export default function Notifications() {
       <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {loading && <Empty text="Memuat…" />}
         {!loading && data?.length === 0 && <Empty text="Belum ada notifikasi" />}
-        {data?.map(n => (
+        {pageItems.map(n => (
           <div key={n.id} className="card" style={{ borderLeft: `4px solid ${n.isRead ? 'var(--border)' : 'var(--g500)'}`, cursor: n.isRead ? 'default' : 'pointer' }}
             onClick={() => !n.isRead && markRead(n.id)}>
             <div className="between">
@@ -30,6 +31,7 @@ export default function Notifications() {
           </div>
         ))}
       </div>
+      {pager}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, fetchObjectUrl, fmt, shortTx, type ChainProof } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
-import { Badge, Empty, useToast } from '../ui'
+import { Badge, Empty, useToast, usePaged } from '../ui'
 import DetailModal from '../components/DetailModal'
 
 const C = { g700: '#1a5e38', g600: '#22773f', blue: '#2563eb', amber: '#d97706', red: '#dc2626' }
@@ -184,6 +184,7 @@ export default function Harvests() {
   const isBulog = user?.role === 'BULOG'
   const isFarmer = user?.role === 'FARMER'
   const { data, loading, reload } = useApi<Harvest[]>(isBulog ? '/harvests/pending' : '/harvests')
+  const { pageItems, pager } = usePaged(data, 9)
   const [modal, setModal] = useState<Harvest | null>(null)
   const [detail, setDetail] = useState<Harvest | null>(null)
   const hStage = (st: string) => st === 'VERIFIED' ? 2 : 1
@@ -211,7 +212,7 @@ export default function Harvests() {
           <div style={{ textAlign: 'center', padding: 60, color: 'var(--txtS)', fontSize: 14 }}>✅ Semua laporan telah diverifikasi</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16, marginTop: 18 }}>
-            {data?.map(h => (
+            {pageItems.map(h => (
               <div key={h.id} onClick={() => setDetail(h)} title="Klik untuk detail & riwayat on-chain" style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid var(--border)', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><Badge status={h.status} /><span style={{ fontSize: 11, color: 'var(--txtS)' }}>{(h.submittedAt ?? '').slice(0, 10)}</span></div>
                 <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 3 }}>{h.farmer?.fullName}</div>
@@ -229,6 +230,7 @@ export default function Harvests() {
             ))}
           </div>
         )}
+        {pager}
         {modal && <VerifModal h={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); reload() }} />}
         {detailModal}
       </div>
@@ -242,7 +244,7 @@ export default function Harvests() {
         <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 14 }}>Status Laporan Panen</div>
         {loading && <Empty text="Memuat…" />}
         {!loading && (data?.length ?? 0) === 0 && <Empty text="Belum ada laporan panen." />}
-        {data?.map(h => (
+        {pageItems.map(h => (
           <div key={h.id} onClick={() => setDetail(h)} style={{ background: '#fff', borderRadius: 14, padding: 13, marginBottom: 9, border: '1px solid var(--border)', cursor: 'pointer' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{h.cropType} · {fmt(h.qtyClaimedKg)} kg</div>
@@ -262,6 +264,7 @@ export default function Harvests() {
             )}
           </div>
         ))}
+        {pager}
         {detailModal}
       </div>
     )
@@ -277,7 +280,7 @@ export default function Harvests() {
           <thead><tr><th>ID On-Chain</th><th>Komoditas</th><th>Kuantitas</th><th>Alokasi</th><th>Status</th><th>TxID</th></tr></thead>
           <tbody>
             {loading && <tr><td colSpan={6}><Empty text="Memuat…" /></td></tr>}
-            {data?.map(h => (
+            {pageItems.map(h => (
               <tr key={h.id} onClick={() => setDetail(h)} style={{ cursor: 'pointer' }}>
                 <td className="mono">{h.harvestChainId}</td>
                 <td>{h.cropType}<div className="muted" style={{ fontSize: 12 }}>{h.land?.province}</div></td>
@@ -290,6 +293,7 @@ export default function Harvests() {
           </tbody>
         </table>
       </div>
+      {pager}
       {detailModal}
     </div>
   )

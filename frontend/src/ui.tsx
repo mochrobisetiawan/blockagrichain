@@ -72,6 +72,28 @@ export function Empty({ text }: { text: string }) {
   return <div className="muted" style={{ padding: '28px 8px', textAlign: 'center' }}>{text}</div>
 }
 
+// ── Pagination reusable untuk semua list/tabel ──
+// Pakai: const { pageItems, pager } = usePaged(data, 8); lalu render pageItems + {pager}
+export function usePaged<T>(items: T[] | undefined | null, per = 8) {
+  const [page, setPage] = useState(0)
+  const list = items ?? []
+  const total = list.length
+  const pageCount = Math.max(1, Math.ceil(total / per))
+  const p = Math.min(page, pageCount - 1)
+  const pageItems = list.slice(p * per, p * per + per)
+  const pager = total <= per ? null : (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px', flexWrap: 'wrap', gap: 8 }}>
+      <span className="muted" style={{ fontSize: 12 }}>Menampilkan {p * per + 1}–{Math.min((p + 1) * per, total)} dari {total}</span>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button className="btn sm secondary" disabled={p === 0} onClick={() => setPage(p - 1)}>← Sebelumnya</button>
+        <span style={{ fontSize: 12, fontWeight: 700 }}>{p + 1}/{pageCount}</span>
+        <button className="btn sm secondary" disabled={p >= pageCount - 1} onClick={() => setPage(p + 1)}>Berikutnya →</button>
+      </div>
+    </div>
+  )
+  return { pageItems, pager, page: p, setPage, total }
+}
+
 // Stat card — gaya prototype BlockAgriChain (ikon + warna aksen + sub).
 export function Stat({ label, value, sub, color = 'var(--g700)', icon }:
   { label: string; value: ReactNode; sub?: string; color?: string; icon?: string }) {
