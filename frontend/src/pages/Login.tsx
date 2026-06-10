@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { api } from '../api'
+import MapPicker from '../components/MapPicker'
 
 const regBlank = { username: '', password: '', fullName: '', nik: '', phone: '', farmerGroup: '', village: '', district: '', city: '', province: '', landAreaHa: '' }
 
@@ -30,6 +31,7 @@ export default function Login() {
 
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [reg, setReg] = useState(regBlank)
+  const [regGps, setRegGps] = useState({ lat: -6.2, lng: 106.816 })
   const [regBusy, setRegBusy] = useState(false)
   const [regErr, setRegErr] = useState('')
   const [regDone, setRegDone] = useState(false)
@@ -37,7 +39,7 @@ export default function Login() {
   const doRegister = async (e: React.FormEvent) => {
     e.preventDefault(); setRegBusy(true); setRegErr('')
     try {
-      await api.post('/auth/register', { ...reg, landAreaHa: Number(reg.landAreaHa) || 0 })
+      await api.post('/auth/register', { ...reg, landAreaHa: Number(reg.landAreaHa) || 0, gpsLat: regGps.lat, gpsLng: regGps.lng })
       setRegDone(true); setReg(regBlank)
     } catch (ex) { setRegErr((ex as Error).message) } finally { setRegBusy(false) }
   }
@@ -115,6 +117,11 @@ export default function Login() {
                       style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: '#fff', fontSize: 13 }} />
                   </div>
                 ))}
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.7)', display: 'block', marginBottom: 5 }}>Titik Lokasi Lahan (geser pin / klik peta)</label>
+                <MapPicker lat={regGps.lat} lng={regGps.lng} onChange={(la, ln) => setRegGps({ lat: la, lng: ln })} height={200} />
+                <div className="mono" style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', marginTop: 4 }}>{regGps.lat.toFixed(5)}, {regGps.lng.toFixed(5)}</div>
               </div>
               {regErr && <div style={{ color: '#fca5a5', fontSize: 12, marginTop: 12 }}>{regErr}</div>}
               <button disabled={regBusy} style={{ width: '100%', marginTop: 16, padding: '13px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', background: '#fff', color: 'var(--g700)' }}>

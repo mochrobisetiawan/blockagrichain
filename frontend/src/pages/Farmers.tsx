@@ -26,6 +26,11 @@ export default function Farmers() {
   const [adding, setAdding] = useState(false)
   const [f, setF] = useState(blank)
   const [busy, setBusy] = useState(false)
+  const [page, setPage] = useState(0)
+  const PER = 8
+  const total = data?.length ?? 0
+  const pageCount = Math.max(1, Math.ceil(total / PER))
+  const paged = (data ?? []).slice(page * PER, page * PER + PER)
 
   const approve = async (id: number) => {
     try { await api.post(`/farmers/${id}/approve`); toast('Petani disetujui & terdaftar on-chain'); reload(); reloadPending() }
@@ -106,7 +111,8 @@ export default function Farmers() {
           <thead><tr><th>ID On-Chain</th><th>Nama</th><th>Kelompok</th><th>Provinsi</th><th>Status</th>{isKementan && <th>Aksi</th>}</tr></thead>
           <tbody>
             {loading && <tr><td colSpan={6}><Empty text="Memuat…" /></td></tr>}
-            {data?.map(fr => (
+            {!loading && total === 0 && <tr><td colSpan={6}><Empty text="Belum ada petani" /></td></tr>}
+            {paged.map(fr => (
               <tr key={fr.id}>
                 <td className="mono">{fr.farmerChainId}</td>
                 <td>{fr.fullName}</td>
@@ -118,6 +124,16 @@ export default function Farmers() {
             ))}
           </tbody>
         </table>
+        {total > PER && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+            <span className="muted" style={{ fontSize: 12 }}>Menampilkan {page * PER + 1}–{Math.min((page + 1) * PER, total)} dari {total}</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button className="btn sm secondary" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>← Sebelumnya</button>
+              <span style={{ fontSize: 12, fontWeight: 700 }}>{page + 1}/{pageCount}</span>
+              <button className="btn sm secondary" disabled={page >= pageCount - 1} onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}>Berikutnya →</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

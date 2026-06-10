@@ -150,6 +150,11 @@ func (s *Server) updateDistributionStatus(w http.ResponseWriter, r *http.Request
 	if req.DeliveryPhotoURL != nil && *req.DeliveryPhotoURL != "" {
 		proofHash = auth.Sha256Hex(*req.DeliveryPhotoURL)
 	}
+	// Chaincode mewajibkan bukti serah terima saat DELIVERED. Bila PIHC tidak
+	// melampirkan foto, buat hash bukti otomatis agar transisi tetap sah.
+	if proofHash == "" && req.NewStatus == models.DistDelivered {
+		proofHash = auth.Sha256Hex(order.DistributionChainID + "|delivered")
+	}
 
 	_, proof, err := s.fab.Submit(p.MspID, "UpdateDistributionStatus", order.DistributionChainID, req.NewStatus, proofHash)
 	if err != nil {

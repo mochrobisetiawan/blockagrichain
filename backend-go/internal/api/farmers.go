@@ -226,6 +226,10 @@ func (s *Server) registerFarmer(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	// Paksa nonaktif: kolom is_active punya default:true sehingga GORM mengabaikan
+	// nilai false saat Create — set eksplisit agar akun benar-benar PENDING.
+	s.db.Model(&models.User{}).Where("id = ?", u.ID).Update("is_active", false)
+
 	chainID := fmt.Sprintf("F-%04d", u.ID)
 	f := models.Farmer{UserID: u.ID, Nik: req.Nik, FullName: req.FullName, FarmerChainID: chainID, RegStatus: "PENDING"}
 	if req.FarmerGroup != "" {
@@ -235,7 +239,7 @@ func (s *Server) registerFarmer(w http.ResponseWriter, r *http.Request) {
 		f.Phone = &req.Phone
 	}
 	s.db.Create(&f)
-	if req.Village != "" {
+	if req.Village != "" || req.LandAreaHa > 0 {
 		s.db.Create(&models.FarmLand{FarmerID: f.ID, Village: req.Village, District: req.District, City: req.City,
 			Province: req.Province, LandAreaHa: req.LandAreaHa, GpsLat: req.GpsLat, GpsLng: req.GpsLng, IsPrimary: true})
 	}
