@@ -271,7 +271,6 @@ func (s *Server) pendingFarmers(w http.ResponseWriter, _ *http.Request) {
 // approveFarmer — POST /farmers/{id}/approve (Kementan) — setujui pendaftaran:
 // registrasi on-chain (RegisterFarmer) + aktifkan akun.
 func (s *Server) approveFarmer(w http.ResponseWriter, r *http.Request) {
-	p := auth.From(r.Context())
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	var f models.Farmer
 	if err := s.db.Preload("User").Preload("FarmLands").First(&f, id).Error; err != nil {
