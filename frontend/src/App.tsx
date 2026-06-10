@@ -23,6 +23,7 @@ const NAV: Record<Role, NavDef[]> = {
     { to: '/submit', label: 'Input', icon: '+' },
     { to: '/harvests', label: 'Status', icon: '○' },
     { to: '/distributions', label: 'Kirim', icon: '◇' },
+    { to: '/notifications', label: 'Notif', icon: '◔' },
     { to: '/profil', label: 'Profil', icon: '☺' },
   ],
   BULOG: [

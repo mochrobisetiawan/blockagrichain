@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { api, fmtRpFull, shortTx } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
@@ -13,18 +14,19 @@ export default function Payments() {
   const toast = useToast()
   const { data, loading, reload } = useApi<Payment[]>('/payments')
   const isKemenkeu = user?.role === 'KEMENKEU'
+  const [rejectId, setRejectId] = useState<number | null>(null)
+  const [reason, setReason] = useState('')
 
-  const approve = async (id: number) => {
-    const ref = prompt('Nomor referensi pencairan Kemenkeu (SP2D):', 'SP2D-2026-' + String(id).padStart(4, '0'))
-    if (!ref) return
-    try { await api.post(`/payments/${id}/approve`, { paymentId: id, kemenkeuRef: ref }); toast('Subsidi dicairkan & dicatat on-chain'); reload() }
-    catch (ex) { toast((ex as Error).message, 'error') }
+  const wrap = async (fn: () => Promise<unknown>, ok: string) => {
+    try { await fn(); toast(ok); reload() } catch (ex) { toast((ex as Error).message, 'error') }
   }
-  const reject = async (id: number) => {
-    const reason = prompt('Alasan penolakan:')
-    if (!reason) return
-    try { await api.post(`/payments/${id}/reject`, { paymentId: id, reason }); toast('Klaim ditolak'); reload() }
-    catch (ex) { toast((ex as Error).message, 'error') }
+  // SP2D dibuat OTOMATIS (tanpa popup) — nomor referensi pencairan Kemenkeu.
+  const approve = (id: number) =>
+    wrap(() => api.post(`/payments/${id}/approve`, { paymentId: id, kemenkeuRef: 'SP2D-2026-' + String(id).padStart(4, '0') }), 'Subsidi dicairkan & dicatat on-chain')
+  const doReject = (id: number) => {
+    if (!reason.trim()) { toast('Alasan penolakan wajib diisi', 'error'); return }
+    wrap(() => api.post(`/payments/${id}/reject`, { paymentId: id, reason }), 'Klaim ditolak')
+    setRejectId(null); setReason('')
   }
 
   return (
@@ -47,10 +49,19 @@ export default function Payments() {
                 <td><Badge status={p.status} /></td>
                 <td className="mono">{shortTx(p.blockchainTxId)}</td>
                 {isKemenkeu && <td>{p.status === 'REQUESTED' && (
-                  <div className="row">
-                    <button className="btn sm" onClick={() => approve(p.id)}>Cairkan</button>
-                    <button className="btn sm danger" onClick={() => reject(p.id)}>Tolak</button>
-                  </div>
+                  rejectId === p.id ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input autoFocus placeholder="Alasan penolakan…" value={reason} onChange={e => setReason(e.target.value)}
+                        style={{ padding: '6px 9px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 12, minWidth: 150 }} />
+                      <button className="btn sm danger" onClick={() => doReject(p.id)}>Kirim</button>
+                      <button className="btn sm secondary" onClick={() => { setRejectId(null); setReason('') }}>✕</button>
+                    </div>
+                  ) : (
+                    <div className="row">
+                      <button className="btn sm" style={{ background: '#1a5e38', color: '#fff' }} onClick={() => approve(p.id)}>💰 Cairkan</button>
+                      <button className="btn sm danger" onClick={() => { setRejectId(p.id); setReason('') }}>Tolak</button>
+                    </div>
+                  )
                 )}</td>}
               </tr>
             ))}

@@ -15,6 +15,7 @@ export default function SubmitHarvest() {
   const [landId, setLandId] = useState<number | ''>('')
   const [photo, setPhoto] = useState('')          // URL object S3
   const [photoName, setPhotoName] = useState('')   // nama file terpilih
+  const [preview, setPreview] = useState('')       // preview lokal gambar
   const [fileHash, setFileHash] = useState('')     // SHA-256 isi file
   const [uploading, setUploading] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -27,6 +28,7 @@ export default function SubmitHarvest() {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true); setPhotoName(file.name)
+    setPreview(URL.createObjectURL(file))   // tampilkan preview lokal langsung
     try {
       const fh = await sha256File(file)       // hash isi file (untuk ledger)
       setFileHash(fh)
@@ -53,7 +55,7 @@ export default function SubmitHarvest() {
       })
       setProof(res.proof)
       toast('Laporan panen tercatat di blockchain (PENDING verifikasi Bulog)')
-      setQty(''); setPhoto(''); setPhotoName(''); setFileHash('')
+      setQty(''); setPhoto(''); setPhotoName(''); setFileHash(''); setPreview('')
     } catch (ex) { toast((ex as Error).message, 'error') }
     finally { setBusy(false) }
   }
@@ -95,6 +97,9 @@ export default function SubmitHarvest() {
           <label>Foto Bukti Panen (unggah ke S3)</label>
           <input type="file" accept="image/*" onChange={onFile} disabled={uploading} />
           {uploading && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Mengunggah ke S3…</div>}
+          {preview && (
+            <img src={preview} alt="tumpukan panen" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)' }} />
+          )}
           {photo && (
             <div className="chain-proof" style={{ marginTop: 8 }}>
               ✅ {photoName} terunggah ke penyimpanan off-chain
