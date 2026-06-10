@@ -86,7 +86,8 @@
           "formdata": [
             { "key": "harvestChainId", "value": "{{harvestChainId}}", "type": "text" },
             { "key": "deviceId", "value": "{{deviceId}}", "type": "text" },
-            { "key": "image", "type": "file", "src": "" }
+            { "key": "image", "type": "file", "src": "" },
+            { "key": "pileImage", "type": "file", "src": "", "disabled": true }
           ]
         },
         "url": {
@@ -111,7 +112,8 @@
             { "key": "harvestChainId", "value": "{{harvestChainId}}", "type": "text" },
             { "key": "deviceId", "value": "{{deviceId}}", "type": "text" },
             { "key": "ocrWeight", "value": "1000", "type": "text" },
-            { "key": "image", "type": "file", "src": "", "disabled": true }
+            { "key": "image", "type": "file", "src": "", "disabled": true },
+            { "key": "pileImage", "type": "file", "src": "", "disabled": true }
           ]
         },
         "url": {

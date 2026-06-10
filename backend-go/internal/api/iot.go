@@ -94,6 +94,9 @@ func (s *Server) iotWeight(w http.ResponseWriter, r *http.Request) {
 	if val > 0 {
 		h.IoTWeightKg = &val
 	}
+	if pile := s.iotOptionalImage(r, "pileImage"); pile != "" { // foto tumpukan panen versi Bulog
+		h.BulogPhotoURL = &pile
+	}
 	s.db.Save(&h)
 
 	devNote := ""
@@ -125,6 +128,40 @@ func (s *Server) iotAuthorized(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	return true
+}
+
+// iotOptionalImage — baca part file opsional (pilih terbesar), unggah ke S3,
+// kembalikan URL. "" bila tidak ada / gagal. Dipakai untuk foto tumpukan panen
+// versi Bulog yang dikirim bersama data IoT.
+func (s *Server) iotOptionalImage(r *http.Request, field string) string {
+	files := r.MultipartForm.File[field]
+	if len(files) == 0 {
+		return ""
+	}
+	hdr := files[0]
+	for _, fh := range files {
+		if fh.Size > hdr.Size {
+			hdr = fh
+		}
+	}
+	f, e := hdr.Open()
+	if e != nil {
+		return ""
+	}
+	defer f.Close()
+	data, e2 := io.ReadAll(io.LimitReader(f, 12<<20))
+	if e2 != nil {
+		return ""
+	}
+	ct := hdr.Header.Get("Content-Type")
+	if ct == "" {
+		ct = "image/jpeg"
+	}
+	u, _, e3 := s.s3.Put(r.Context(), "iot", hdr.Filename, ct, data)
+	if e3 != nil {
+		return ""
+	}
+	return u
 }
 
 // iotFindHarvest — cari panen dari field 'harvestId' atau 'harvestChainId'.
@@ -205,6 +242,9 @@ func (s *Server) iotWeightValue(w http.ResponseWriter, r *http.Request) {
 	if deviceID != "" {
 		h.IoTDeviceID = &deviceID
 	}
+	if pile := s.iotOptionalImage(r, "pileImage"); pile != "" { // foto tumpukan panen versi Bulog
+		h.BulogPhotoURL = &pile
+	}
 	src := "value(direct)"
 	h.IoTOcrRaw = &src
 	s.db.Save(&h)
@@ -219,6 +259,41 @@ func (s *Server) iotWeightValue(w http.ResponseWriter, r *http.Request) {
 	s.json(w, http.StatusOK, map[string]any{
 		"harvestId": h.ID, "deviceId": deviceID, "ocrWeight": val, "hasImage": imgURL != "",
 	})
+}
+
+// harvestPhoto — GET /api/harvests/{id}/photo?kind=harvest|iot|bulog (Bulog).
+// Proxy gambar privat dari S3 agar tampil di layar verifikasi tanpa expose bucket.
+func (s *Server) harvestPhoto(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	var h models.Harvest
+	if err := s.db.First(&h, id).Error; err != nil {
+		s.notFound(w, "Panen tidak ditemukan")
+		return
+	}
+	var url *string
+	switch r.URL.Query().Get("kind") {
+	case "harvest":
+		url = h.HarvestPhotoURL
+	case "bulog":
+		url = h.BulogPhotoURL
+	default:
+		url = h.IoTImageURL
+	}
+	if url == nil || *url == "" {
+		s.notFound(w, "Gambar tidak ditemukan")
+		return
+	}
+	data, ct, err := s.s3.GetByURL(r.Context(), *url)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if ct == "" {
+		ct = "image/jpeg"
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "private, max-age=120")
+	_, _ = w.Write(data)
 }
 
 // iotImage — GET /api/iot/image/{id}  (Bulog) — proxy gambar timbangan dari S3

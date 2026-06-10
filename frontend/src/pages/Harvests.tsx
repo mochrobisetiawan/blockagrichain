@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, fetchObjectUrl, fmt, shortTx, type ChainProof } from '../api'
 import { useApi } from '../hooks'
 import { useAuth } from '../auth'
@@ -14,30 +14,58 @@ interface Harvest {
   land?: { village: string; province: string; landAreaHa: number; gpsLat: number; gpsLng: number }
   allocation?: { ureaKg: number; npkKg: number; organicKg: number } | null
   iotImageUrl?: string; iotWeightKg?: number; iotOcrRaw?: string; iotDeviceId?: string
+  harvestPhotoUrl?: string; bulogPhotoUrl?: string
 }
 
 /* ───── Modal Verifikasi Fisik (gaya prototype + IoT Smart Scale) ───── */
 function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; onDone: () => void }) {
   const toast = useToast()
+  const [hv, setHv] = useState<Harvest>(h)                 // data panen yang bisa di-refresh
   const [weight, setWeight] = useState(String(h.iotWeightKg ?? Math.round(h.qtyClaimedKg * 0.97)))
+  const touchedRef = useRef(false)                         // user sudah mengubah berat manual? (ref agar tak basi di interval)
   const [busy, setBusy] = useState<string>('')
   const [proof, setProof] = useState<ChainProof | null>(null)
+  const [rejectMode, setRejectMode] = useState(false)
+  const [reason, setReason] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
   const iotW = Number(weight) || 0
-  const delta = h.qtyClaimedKg ? Math.abs((h.qtyClaimedKg - iotW) / h.qtyClaimedKg * 100) : 0
+  const delta = hv.qtyClaimedKg ? Math.abs((hv.qtyClaimedKg - iotW) / hv.qtyClaimedKg * 100) : 0
   const ok = delta < 10
-  const [imgSrc, setImgSrc] = useState('')
-  useEffect(() => {
-    if (!h.iotImageUrl) return
-    let url = ''
-    fetchObjectUrl(`/iot/image/${h.id}`).then(u => { url = u; setImgSrc(u) }).catch(() => {})
-    return () => { if (url) URL.revokeObjectURL(url) }
-  }, [h.id, h.iotImageUrl])
 
-  const decide = async (decision: 'APPROVED' | 'REJECTED') => {
+  // refresh data panen (mengambil data IoT yang baru masuk) — manual + otomatis tiap 8 dtk.
+  const refresh = async () => {
+    setRefreshing(true)
+    try {
+      const res = await api.get<{ offChain: Harvest }>(`/harvests/${h.id}`)
+      if (res.offChain) {
+        setHv(res.offChain)
+        if (!touchedRef.current && res.offChain.iotWeightKg) setWeight(String(res.offChain.iotWeightKg))
+      }
+    } catch { /* abaikan */ } finally { setRefreshing(false) }
+  }
+  useEffect(() => { const t = setInterval(refresh, 8000); return () => clearInterval(t) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // tiga gambar (proxy privat S3): panen petani, display timbangan IoT, bukti fisik Bulog.
+  const [imgFarmer, setImgFarmer] = useState('')
+  const [imgIot, setImgIot] = useState('')
+  const [imgBulog, setImgBulog] = useState('')
+  useEffect(() => {
+    const urls: string[] = []
+    const load = (has: boolean, kind: string, set: (s: string) => void) => {
+      if (!has) { set(''); return }
+      fetchObjectUrl(`/harvests/${h.id}/photo?kind=${kind}`).then(u => { urls.push(u); set(u) }).catch(() => {})
+    }
+    load(!!hv.harvestPhotoUrl, 'harvest', setImgFarmer)
+    load(!!hv.iotImageUrl, 'iot', setImgIot)
+    load(!!hv.bulogPhotoUrl, 'bulog', setImgBulog)
+    return () => urls.forEach(u => URL.revokeObjectURL(u))
+  }, [h.id, hv.harvestPhotoUrl, hv.iotImageUrl, hv.bulogPhotoUrl])
+
+  const decide = async (decision: 'APPROVED' | 'REJECTED', rj = '') => {
     setBusy(decision)
     try {
       const res = await api.post<{ proof: ChainProof }>('/verifications', {
-        harvestId: h.id, measuredWeightKg: iotW, ocrWeightRaw: weight, decision,
+        harvestId: h.id, measuredWeightKg: iotW, ocrWeightRaw: weight, decision, rejectReason: rj,
       })
       setProof(res.proof)
       toast(decision === 'APPROVED' ? 'Disetujui — smart contract menghitung alokasi otomatis' : 'Laporan ditolak')
@@ -46,9 +74,17 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
   }
 
   const info: [string, string][] = [
-    ['Tanaman', h.cropType], ['Lahan', `${h.land?.landAreaHa ?? '—'} Ha`], ['Provinsi', h.land?.province ?? '—'],
-    ['Klaim', `${fmt(h.qtyClaimedKg)} kg`], ['Desa', h.land?.village ?? '—'], ['Tanggal', (h.submittedAt ?? '').slice(0, 10)],
+    ['Tanaman', hv.cropType], ['Lahan', `${hv.land?.landAreaHa ?? '—'} Ha`], ['Provinsi', hv.land?.province ?? '—'],
+    ['Klaim', `${fmt(hv.qtyClaimedKg)} kg`], ['Desa', hv.land?.village ?? '—'], ['Tanggal', (hv.submittedAt ?? '').slice(0, 10)],
   ]
+  const ImgCell = ({ label, src, has }: { label: string; src: string; has: boolean }) => (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txtM)', marginBottom: 4 }}>{label}</div>
+      {!has ? <div style={{ height: 92, display: 'grid', placeItems: 'center', background: '#f3f4f6', borderRadius: 9, color: 'var(--txtS)', fontSize: 16 }}>—</div>
+        : src ? <img src={src} alt={label} style={{ width: '100%', height: 92, objectFit: 'cover', borderRadius: 9, border: '1px solid var(--border)' }} />
+        : <div style={{ height: 92, display: 'grid', placeItems: 'center', background: '#f3f4f6', borderRadius: 9, color: 'var(--txtS)', fontSize: 11 }}>Memuat…</div>}
+    </div>
+  )
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }} onClick={onClose}>
@@ -56,9 +92,12 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
         <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 16 }}>Verifikasi Fisik</div>
-            <div style={{ fontSize: 12, color: 'var(--txtS)', fontFamily: 'monospace' }}>{h.harvestChainId} · {h.farmer?.fullName}</div>
+            <div style={{ fontSize: 12, color: 'var(--txtS)', fontFamily: 'monospace' }}>{hv.harvestChainId} · {hv.farmer?.fullName}</div>
           </div>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: '#f3f4f6', fontSize: 14, color: 'var(--txtS)' }}>✕</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={refresh} disabled={refreshing} title="Muat ulang data IoT" style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: '#f3f4f6', fontSize: 14, color: 'var(--txtM)' }}>{refreshing ? '…' : '🔄'}</button>
+            <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--border)', background: '#f3f4f6', fontSize: 14, color: 'var(--txtS)' }}>✕</button>
+          </div>
         </div>
         <div style={{ padding: '18px 22px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 18 }}>
@@ -70,28 +109,27 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
             ))}
           </div>
 
-          {/* Foto display timbangan dari ESP32-CAM + hasil OCR */}
-          {h.iotImageUrl ? (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txtM)' }}>📷 Foto display timbangan (ESP32-CAM)</div>
-                {h.iotDeviceId && <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: C.blue, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 9px' }}>🔌 {h.iotDeviceId}</span>}
-              </div>
-              {imgSrc
-                ? <img src={imgSrc} alt="display timbangan" style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, background: '#f3f4f6', border: '1px solid var(--border)' }} />
-                : <div style={{ height: 120, display: 'grid', placeItems: 'center', background: '#f3f4f6', borderRadius: 10, color: 'var(--txtS)', fontSize: 12 }}>Memuat gambar…</div>}
-              {h.iotOcrRaw && <div style={{ fontSize: 11, color: 'var(--txtS)', marginTop: 4 }}>Hasil OCR mentah: <b className="mono">{h.iotOcrRaw}</b></div>}
-            </div>
-          ) : (
+          {/* Tiga gambar: panen petani, display timbangan IoT, bukti fisik Bulog */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txtM)' }}>Bukti Gambar</div>
+            {hv.iotDeviceId && <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: C.blue, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 9px' }}>🔌 {hv.iotDeviceId}</span>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+            <ImgCell label="📷 Panen (Petani)" src={imgFarmer} has={!!hv.harvestPhotoUrl} />
+            <ImgCell label="⚖️ Display Timbangan (IoT)" src={imgIot} has={!!hv.iotImageUrl} />
+            <ImgCell label="🟢 Bukti Fisik (Bulog)" src={imgBulog} has={!!hv.bulogPhotoUrl} />
+          </div>
+          {hv.iotOcrRaw && <div style={{ fontSize: 11, color: 'var(--txtS)', marginBottom: 8 }}>Hasil OCR mentah: <b className="mono">{hv.iotOcrRaw}</b></div>}
+          {!hv.iotImageUrl && (
             <div style={{ marginBottom: 14, background: 'var(--amberL)', color: '#92400e', borderRadius: 10, padding: '10px 13px', fontSize: 12 }}>
-              📡 Belum ada data IoT dari ESP32-CAM untuk panen ini — isi berat manual.
+              📡 Data IoT/timbangan belum masuk — tunggu kiriman ESP32 (auto-refresh tiap 8 dtk) atau tekan 🔄, atau isi berat manual.
             </div>
           )}
 
           {/* Input berat OCR */}
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--txtM)', display: 'block', marginBottom: 5 }}>Berat Terukur IoT / OCR (kg)</label>
-            <input type="number" value={weight} onChange={e => setWeight(e.target.value)} disabled={!!busy}
+            <input type="number" value={weight} onChange={e => { setWeight(e.target.value); touchedRef.current = true }} disabled={!!busy}
               style={{ width: '100%', padding: '10px 13px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 14 }} />
           </div>
 
@@ -99,10 +137,10 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
           <div style={{ background: ok ? '#f0faf5' : '#fee2e2', borderRadius: 14, padding: '14px 16px', marginBottom: 16, border: `1px solid ${ok ? 'var(--g200)' : '#fca5a5'}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 12, color: ok ? C.g700 : C.red }}>📡 IoT Smart Scale + OCR (ESP32-CAM)</div>
-              {h.iotDeviceId && <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: 'var(--txtM)' }}>🔌 {h.iotDeviceId}</span>}
+              {hv.iotDeviceId && <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: 'var(--txtM)' }}>🔌 {hv.iotDeviceId}</span>}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, textAlign: 'center' }}>
-              <div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--txtM)' }}>{fmt(h.qtyClaimedKg)} kg</div><div style={{ fontSize: 10, color: 'var(--txtS)' }}>Klaim Petani</div></div>
+              <div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--txtM)' }}>{fmt(hv.qtyClaimedKg)} kg</div><div style={{ fontSize: 10, color: 'var(--txtS)' }}>Klaim Petani</div></div>
               <div><div style={{ fontSize: 20, fontWeight: 800, color: C.blue }}>{fmt(iotW)} kg</div><div style={{ fontSize: 10, color: 'var(--txtS)' }}>Terukur IoT</div></div>
               <div><div style={{ fontSize: 20, fontWeight: 800, color: ok ? C.g600 : C.red }}>Δ {delta.toFixed(1)}%</div><div style={{ fontSize: 10, color: 'var(--txtS)' }}>Selisih</div></div>
             </div>
@@ -110,7 +148,7 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
           </div>
 
           <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--txtS)', background: '#f3f4f6', padding: '8px 12px', borderRadius: 8, marginBottom: 18 }}>
-            Hash dok: {shortTx(h.harvestDocHash)} · GPS: {h.land?.gpsLat}, {h.land?.gpsLng} · MSP: BulogMSP
+            Hash dok: {shortTx(hv.harvestDocHash)} · GPS: {hv.land?.gpsLat}, {hv.land?.gpsLng} · MSP: BulogMSP
           </div>
 
           {proof ? (
@@ -119,9 +157,19 @@ function VerifModal({ h, onClose, onDone }: { h: Harvest; onClose: () => void; o
               <div style={{ fontWeight: 700, color: C.g700, marginBottom: 6 }}>Tercatat di blockchain</div>
               <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--txtS)' }}>TxID {shortTx(proof.txId)} · Block #{proof.blockNumber}</div>
             </div>
+          ) : rejectMode ? (
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.red, display: 'block', marginBottom: 5 }}>Alasan penolakan (wajib)</label>
+              <input autoFocus value={reason} onChange={e => setReason(e.target.value)} placeholder="mis. berat tidak sesuai / dokumen tidak valid"
+                style={{ width: '100%', padding: '10px 13px', borderRadius: 10, border: `1.5px solid ${C.red}`, fontSize: 14, marginBottom: 10 }} />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => reason.trim() && decide('REJECTED', reason)} disabled={!!busy || !reason.trim()} style={{ flex: 2, padding: 12, borderRadius: 12, border: 'none', background: C.red, color: '#fff', fontWeight: 700, fontSize: 14, opacity: reason.trim() ? 1 : .5 }}>{busy === 'REJECTED' ? 'Memproses…' : '✕ Konfirmasi Tolak'}</button>
+                <button onClick={() => { setRejectMode(false); setReason('') }} disabled={!!busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: '1px solid var(--border)', background: '#f3f4f6', color: 'var(--txtM)', fontWeight: 700, fontSize: 14 }}>Batal</button>
+              </div>
+            </div>
           ) : (
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => decide('REJECTED')} disabled={!!busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: `2px solid ${C.red}`, background: 'var(--redL)', color: C.red, fontWeight: 700, fontSize: 14 }}>{busy === 'REJECTED' ? 'Memproses…' : '✕ Tolak'}</button>
+              <button onClick={() => setRejectMode(true)} disabled={!!busy} style={{ flex: 1, padding: 12, borderRadius: 12, border: `2px solid ${C.red}`, background: 'var(--redL)', color: C.red, fontWeight: 700, fontSize: 14 }}>✕ Tolak</button>
               <button onClick={() => decide('APPROVED')} disabled={!!busy} style={{ flex: 2, padding: 12, borderRadius: 12, border: 'none', background: C.g600, color: '#fff', fontWeight: 700, fontSize: 14 }}>{busy === 'APPROVED' ? 'Menandatangani HSM…' : '✓ Setujui & Tanda Tangan Digital (HSM)'}</button>
             </div>
           )}

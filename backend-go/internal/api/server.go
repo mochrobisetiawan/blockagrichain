@@ -109,6 +109,7 @@ func (s *Server) Router() http.Handler {
 
 			// IoT image proxy (Bulog lihat foto timbangan dari S3 privat)
 			r.With(auth.RequireRoles(models.RoleBulog)).Get("/iot/image/{id}", s.iotImage)
+			r.With(auth.RequireRoles(models.RoleBulog)).Get("/harvests/{id}/photo", s.harvestPhoto)
 
 			// Notifications
 			r.Get("/notifications", s.listNotifications)

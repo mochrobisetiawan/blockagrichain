@@ -17,10 +17,15 @@ func (s *Server) submitVerification(w http.ResponseWriter, r *http.Request) {
 		MeasuredWeightKg float64 `json:"measuredWeightKg"`
 		OcrWeightRaw     *string `json:"ocrWeightRaw"`
 		Decision         string  `json:"decision"`
+		RejectReason     string  `json:"rejectReason"`
 		HsmSignature     *string `json:"hsmSignature"`
 	}
 	if err := decode(r, &req); err != nil {
 		s.bad(w, "Body tidak valid")
+		return
+	}
+	if req.Decision == "REJECTED" && req.RejectReason == "" {
+		s.bad(w, "Alasan penolakan wajib diisi")
 		return
 	}
 
@@ -71,6 +76,9 @@ func (s *Server) submitVerification(w http.ResponseWriter, r *http.Request) {
 		HarvestRecordID: h.ID, BulogOfficerID: p.UserID, MeasuredWeightKg: req.MeasuredWeightKg,
 		OcrWeightRaw: req.OcrWeightRaw, DeltaPercent: float64(delta2dp) / 100, Status: vstatus, BlockchainTxID: &tx,
 	}
+	if req.Decision == "REJECTED" && req.RejectReason != "" {
+		verif.RejectReason = &req.RejectReason
+	}
 	s.db.Create(&verif)
 	s.db.Model(&models.Harvest{}).Where("id = ?", h.ID).Update("status", status)
 
@@ -98,7 +106,7 @@ func (s *Server) submitVerification(w http.ResponseWriter, r *http.Request) {
 			"Alokasi pupuk untuk "+fullName+" siap didistribusikan.", tx, nil)
 	} else {
 		s.notify(models.RoleFarmer, "VerificationCompleted", "Laporan ditolak",
-			"Laporan "+h.HarvestChainID+" ditolak Bulog.", tx, farmerUserID)
+			"Laporan "+h.HarvestChainID+" ditolak Bulog. Alasan: "+req.RejectReason, tx, farmerUserID)
 	}
 
 	s.json(w, 200, map[string]any{

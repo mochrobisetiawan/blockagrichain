@@ -115,6 +115,8 @@ type Harvest struct {
 	IoTImageURL *string  `gorm:"column:iot_image_url" json:"iotImageUrl,omitempty"`
 	IoTWeightKg *float64 `gorm:"column:iot_weight_kg" json:"iotWeightKg,omitempty"`
 	IoTOcrRaw   *string  `gorm:"column:iot_ocr_raw;size:50" json:"iotOcrRaw,omitempty"`
+	// Foto bukti fisik tumpukan panen versi Bulog (dikirim bersama data IoT).
+	BulogPhotoURL *string `gorm:"column:bulog_photo_url" json:"bulogPhotoUrl,omitempty"`
 
 	Farmer       *Farmer       `gorm:"foreignKey:FarmerID" json:"-"`
 	Land         *FarmLand     `gorm:"foreignKey:LandID" json:"-"`
@@ -132,6 +134,7 @@ type Verification struct {
 	OcrWeightRaw     *string   `gorm:"column:ocr_weight_raw;size:50" json:"ocrWeightRaw,omitempty"`
 	DeltaPercent     float64   `gorm:"column:delta_percent" json:"deltaPercent"`
 	Status           string    `gorm:"column:status;size:20" json:"status"`
+	RejectReason     *string   `gorm:"column:reject_reason;size:255" json:"rejectReason,omitempty"`
 	BlockchainTxID   *string   `gorm:"column:blockchain_tx_id;size:128" json:"blockchainTxId,omitempty"`
 	VerifiedAt       time.Time `gorm:"column:verified_at" json:"verifiedAt"`
 }
