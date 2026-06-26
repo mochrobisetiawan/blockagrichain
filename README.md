@@ -193,7 +193,7 @@ blockagrichain/
 
 ## Tim Pengembang (Kelompok 4)
 - **Muhamad Iqbal Aprido** — M0503251001
-- **Galuh Muhammad Iman Akbar** — M0503251031 — Perangkat IoT / ESP32-CAM
+- **Galuh Muhammad Iman Akbar** — M0503251031
 - **Moch Robi Setiawan** — M0503251041
 
 ---
