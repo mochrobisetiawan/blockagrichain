@@ -197,6 +197,3 @@ blockagrichain/
 - **Moch Robi Setiawan** — M0503251041
 
 ---
-
-## Lisensi & Catatan
-Proyek akademik (KOM1635, IPB University). Dilarang menaruh **Private Key** atau berkas **`.env`** di repositori publik.
