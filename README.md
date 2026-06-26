@@ -157,7 +157,15 @@ serta query: `GetFarmer`, `GetHarvestById`, `GetActivePolicy`, `GetState`, **`Ge
 
 ---
 
-## 9. Struktur Proyek
+## 9. Deployment IoT
+1. **clean_database_realtime.py** → Digunakan sebagai pembersihan DB ketika terjadi kesalah input berdasarkan OCR.
+2. **sync_ocr1.py** → Digunakan sebagai proses sync dari server web dengan IoT secara online.
+3. **ocr_watcher8.py** → Digunakan sebagai proses OCR dengan melakukan capture pada gambar digital timbangan.
+4. **image_server.py** → Digunakan sebagai penerimaan file pada device ESPCAM3201 & ESPCAM3202
+5. **ESP32CAM01.ino** → Digunakan untuk membangun IoT devices ESP32CAM01 sebagai pengiriman file gambar digital timbangan ke server
+6. **ESP32CAM02.ino** → Digunakan untuk membangun IoT devices ESP32CAM01 sebagai pengiriman file gambar hasil panen ke server
+
+## 10. Struktur Proyek
 ```
 blockagrichain/
 ├─ frontend/      # React + Vite (UI 5 peran)
@@ -171,7 +179,7 @@ blockagrichain/
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 | Masalah | Solusi |
 |---|---|
 | `peer: command not found` | jalankan `export PATH=$PWD/fabric/bin:$PATH` |
