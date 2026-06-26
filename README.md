@@ -182,5 +182,12 @@ blockagrichain/
 
 ---
 
+## Tim Pengembang (Kelompok 4)
+- **Muhamad Iqbal Aprido** — M0503251001
+- **Galuh Muhammad Iman Akbar** — M0503251031 — Perangkat IoT / ESP32-CAM
+- **Moch Robi Setiawan** — M0503251041
+
+---
+
 ## Lisensi & Catatan
 Proyek akademik (KOM1635, IPB University). Dilarang menaruh **Private Key** atau berkas **`.env`** di repositori publik.
