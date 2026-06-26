@@ -175,6 +175,7 @@ blockagrichain/
 ├─ deploy/        # Docker Compose, skrip deploy, koleksi Postman
 ├─ docs/          # SKPL, DPPL, diagram, manajemen proyek
 └─ OCR Sample/    # Contoh gambar untuk uji OCR IoT
+└─ IoT/           # Digunakan sebagai proses sync IoT dengan website (OCR dan Hasil Panen)
 ```
 
 ---
