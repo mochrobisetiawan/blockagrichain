@@ -1,68 +1,107 @@
-# BlockAgriChain — Full Stack (Hyperledger Fabric asli)
+# BlockAgriChain — Blockchain Alokasi Pupuk Subsidi (Hyperledger Fabric)
 
-Implementasi sistem **Blockchain Alokasi Pupuk Subsidi** sesuai **SKPL** & **DPPL**
-(Mata Kuliah Teknologi Blockchain KOM2635, IPB University) — **menggunakan Hyperledger
-Fabric asli dengan Go Chaincode**, dirancang untuk dijalankan/di-deploy ke **AWS (ECS Fargate)**.
+Sistem **transparansi penyaluran pupuk bersubsidi** berbasis **Hyperledger Fabric 2.5** (permissioned blockchain) dengan **Go Chaincode**, backend **Go**, frontend **React + Vite**, dan integrasi **IoT (ESP32-CAM) + OCR**.
+Proyek Akhir — Mata Kuliah **Teknologi Blockchain (KOM1635)**, IPB University — **Kelompok 4**.
 
-Alur hulu→hilir: **Petani** lapor panen → **Bulog** verifikasi fisik (IoT/OCR + HSM) →
-*smart contract* hitung alokasi otomatis → **PIHC** distribusi → **Kemenkeu** cairkan subsidi,
-dengan **Kementan** pembuat kebijakan. Semua transaksi immutable & dapat diaudit.
+Alur hulu→hilir: **Petani** lapor panen → **Bulog** verifikasi fisik (IoT/OCR) → *smart contract* menghitung alokasi otomatis → **PIHC** distribusi → **Petani** konfirmasi terima → **PIHC** klaim → **Kemenkeu** cairkan subsidi, dengan **Kementan** pembuat kebijakan. Semua transaksi **immutable & dapat diaudit**.
 
-## Arsitektur
+---
+
+## 1. Arsitektur Singkat
 
 | Lapisan | Teknologi | Lokasi |
 |---|---|---|
 | Frontend | React 19 + Vite + TypeScript | `frontend/` |
-| Backend / API Gateway | **Go** (chi) + JWT, Fabric Gateway SDK **resmi**, **SQL Server** (GORM) | `backend-go/` |
-| Smart Contract | **Go Chaincode** (Hyperledger Fabric, CCaaS) | `chaincode/` |
-| Jaringan Blockchain | **Hyperledger Fabric 2.5** asli — 5 org MSP + orderer Raft, **World State = CouchDB** | `fabric/` |
-| Object Storage off-chain | **Amazon S3** — foto bukti panen/serah terima/profil (unggah *presigned URL*) | `backend-go/internal/storage` |
-| Deploy | Dockerfile tiap service + EC2 (utama) / ECS (opsional) | `deploy/` |
+| Backend / API Gateway | **Go** (chi) + JWT + **Fabric Gateway SDK (gRPC)** + GORM (SQL Server) | `backend-go/` |
+| Smart Contract | **Go Chaincode** (Fabric, CCaaS) | `chaincode/` |
+| Jaringan Blockchain | **Hyperledger Fabric 2.5** — 5 org MSP + Orderer (Raft), World State **CouchDB** | `fabric/` |
+| Penyimpanan off-chain | **SQL Server** (PII/biodata) + **Amazon S3** (foto, presigned) | `backend-go/internal/storage` |
+| Deploy | Docker Compose per service (EC2/AWS) | `deploy/` |
 
-> **Catatan bahasa (sesuai dokumen):** DPPL mewajibkan **Go Chaincode**; bahasa Application
-> Server tidak ditentukan dokumen. Stack ini memakai **Go end-to-end** (chaincode + backend)
-> dengan **Fabric Gateway SDK resmi**.
+**5 MSP (1:1 dengan peran):** `PetaniMSP · BulogMSP · KementanMSP · KemenkeuMSP · PIHCMSP` + `OrdererMSP`.
+Kontrol akses (ABAC/RBAC) ditegakkan di chaincode berdasarkan **MSP sertifikat pengirim** transaksi.
 
-### Pemisahan On-Chain vs Off-Chain (DPPL bab I.4)
-- **On-chain** (ledger Fabric): hash dokumen, ID petani, status verifikasi, kuota alokasi, audit.
-- **Off-chain — SQL Server** (RDBMS utama sesuai DPPL): PII (NIK, biodata), GPS, notifikasi,
-  serta **URL** foto. NIK **tidak pernah** masuk ledger — hanya `SHA-256(NIK)`.
-- **Off-chain — Amazon S3**: file biner foto/dokumen (bukti panen, serah terima, profil).
-  File diunggah klien via *presigned PUT*; hanya **SHA-256** file yang masuk ledger.
+**On-chain vs Off-chain:** ledger menyimpan hash dokumen, ID, status, kuota, audit. Data pribadi (NIK, biodata, GPS) & file foto disimpan off-chain (SQL Server + S3); **NIK tidak pernah masuk ledger** — hanya `SHA-256(NIK)`.
 
-### Lima MSP (1:1 dengan peran)
-`PetaniMSP · BulogMSP · KementanMSP · KemenkeuMSP · PIHCMSP` + `OrdererMSP`.
-Kontrol akses (RBAC) ditegakkan di chaincode berdasarkan **MSP sertifikat pengirim** transaksi.
+---
 
-## Menjalankan (lokal/EC2 ber-Docker)
+## 2. Prasyarat (Prerequisites)
 
-> Mesin **harus** punya Docker + binari Fabric. Di Windows gunakan WSL2/EC2 Ubuntu.
+Jalankan di **Linux / WSL2 / EC2 Ubuntu** (Fabric butuh Docker Linux).
 
+| Alat | Versi minimal | Cek |
+|---|---|---|
+| Docker Engine | 24+ | `docker --version` |
+| Docker Compose plugin | v2 | `docker compose version` |
+| Go | 1.22+ | `go version` |
+| Node.js + npm | 18+ | `node -v` |
+| Git, curl, jq | terbaru | `git --version` |
+| Binari & image Hyperledger Fabric | 2.5.x | `peer version` |
+
+> Windows: gunakan **WSL2 (Ubuntu)**. Pastikan Docker Desktop integrasi WSL2 aktif.
+
+---
+
+## 3. Instalasi Lengkap (Lokal)
+
+### Langkah 0 — Clone repository
 ```bash
-# 0. Pasang binari + image Fabric (sekali)
+git clone https://github.com/mochrobisetiawan/blockagrichain.git
+cd blockagrichain
+```
+
+### Langkah 1 — Pasang binari + image Fabric (sekali saja)
+```bash
 curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh | bash -s -- binary docker
 export PATH=$PWD/fabric/bin:$PATH
 export FABRIC_CFG_PATH=$PWD/fabric/config
-
-# 1. Naikkan jaringan Fabric + chaincode (crypto, channel, install/approve/commit)
-cd fabric && ./network.sh up && cd ..
-
-# 2. Naikkan Postgres + backend Go + frontend
-cd deploy && docker compose -f docker-compose.app.yml up -d --build
+peer version   # verifikasi
 ```
-Frontend: `http://localhost:8081` · API: `http://localhost:8080`.
 
-Mode dev frontend (hot reload): `cd frontend && npm install && npm run dev` (proxy `/api` → `:8080`).
+### Langkah 2 — Siapkan environment backend
+Salin contoh env lalu sesuaikan:
+```bash
+cp backend-go/.env.example backend-go/.env
+```
+Isi minimal `backend-go/.env`:
+```env
+DATABASE_URL=sqlserver://sa:Your_Strong_Pass1@mssql:1433?database=BlockAgriChain
+JWT_KEY=ganti-dengan-kunci-acak-panjang
+S3_BUCKET=                # kosongkan untuk mode lokal tanpa S3
+AWS_SECRET_ID=
+# IOT_API_KEY=opsional-kunci-perangkat-esp32
+```
+> **JANGAN commit** file `.env` / private key (sudah di-`.gitignore`).
 
-## Deploy ke AWS
+### Langkah 3 — Naikkan jaringan Fabric + chaincode
+Membuat crypto (cryptogen), channel, lalu install/approve/commit chaincode:
+```bash
+cd fabric
+./network.sh up
+cd ..
+```
 
-- **EC2 (disarankan, paling sederhana):** semua di 1 instance — `bash deploy/up-ec2.sh`.
-  Panduan lengkap: **[deploy/README-EC2.md](deploy/README-EC2.md)**.
-- **ECS Fargate (opsional, lanjutan):** app stateless di Fargate, Fabric tetap di EC2 (hybrid)
-  atau full Fargate (EFS + Cloud Map). Lihat **[deploy/README-ECS.md](deploy/README-ECS.md)**.
+### Langkah 4 — Naikkan database, backend, dan frontend
+```bash
+cd deploy
+docker compose -f docker-compose.app.yml up -d --build
+cd ..
+```
+- Frontend: **http://localhost:8081**
+- API: **http://localhost:8080**  (cek: `curl http://localhost:8080/api/health`)
 
-## Akun Demo (password: `password123`)
-| Username | Role | MSP |
+### (Opsional) Mode dev frontend (hot reload)
+```bash
+cd frontend
+npm install
+npm run dev     # proxy /api -> :8080
+```
+
+---
+
+## 4. Akun Demo (password: `password123`)
+
+| Username | Peran | MSP |
 |---|---|---|
 | `budi` | Petani | PetaniMSP |
 | `bulog` | Bulog (validator) | BulogMSP |
@@ -70,33 +109,78 @@ Mode dev frontend (hot reload): `cd frontend && npm install && npm run dev` (pro
 | `kemenkeu` | Kementerian Keuangan | KemenkeuMSP |
 | `pihc` | Pupuk Indonesia | PIHCMSP |
 
-## Alur Demo End-to-End
-1. **budi** → Input Panen (foto di-hash SHA-256 di klien, hanya hash ke ledger).
-2. **bulog** → Antrian Verifikasi → berat IoT → **Approve** (HSM) → alokasi dihitung otomatis chaincode.
+> Petani juga dapat **mendaftar mandiri** dari halaman Login (tab "Daftar") → disetujui Kementan.
+
+---
+
+## 5. Alur Demo End-to-End
+1. **budi** → Input Panen (foto di-hash SHA-256 di klien; hanya hash + GPS ke ledger).
+2. **bulog** → Antrian Verifikasi → data IoT/OCR (ESP32-CAM) → **Setuju**/**Tolak (wajib alasan)** → alokasi dihitung otomatis chaincode.
 3. **pihc** → Distribusi → Buat Order → Kirim → Tandai Terkirim.
-4. **budi** → **Konfirmasi Terima** (hanya petani penerima — ditegakkan chaincode MSP+ownership).
+4. **budi** → **Konfirmasi Terima** (hanya petani penerima — ditegakkan chaincode MSP + ownership).
 5. **pihc** → Ajukan Klaim subsidi.
-6. **kemenkeu** → **Cairkan**.
-7. Siapa pun → **Blockchain Explorer** → **Verifikasi Integritas** (rantai blok native Fabric).
+6. **kemenkeu** → **Cairkan** (SP2D).
+7. Siapa pun (sesuai peran) → **Blockchain Explorer** → **Verifikasi Integritas** rantai blok.
 
-## Fungsi Chaincode (DPPL bab V) — `chaincode/`
-`RegisterFarmer`, `SubmitHarvest`, `SubmitVerification` (→ auto `CalculateAllocation`),
-`ProposePolicy`/`ApprovePolicy`, `CreateDistribution`/`UpdateDistributionStatus`,
-`RequestPayment`/`ApprovePayment`/`RejectPayment`, `DisableFarmer`, plus query
-(`GetFarmer`, `GetHarvestById`, …, `GetState`, `GetTransactionHistory`).
+### Read vs Write (Fabric)
+- **Read** (bebas gas): `Evaluate`/query — Explorer, GetActivePolicy, riwayat on-chain (tidak membentuk blok).
+- **Write** (transaksi): `Submit` — Endorsement MSP → Order (Raft) → Validate & Commit; bukti **TxID + nomor blok** ditampilkan di UI.
 
-## Empat Elemen Wajib Aplikasi Blockchain (DPPL bab IV)
-- **Connection Status**: indikator `Terhubung · <MSP>` di topbar.
-- **Transaction Feedback**: toast + notifikasi event real-time.
-- **Blockchain Evidence**: TxID + Block Number + Block Hash pada tiap aksi.
-- **Verification Tool**: menu **Cek Hash** + **Verifikasi Integritas** (blok native Fabric).
+---
 
-## Dokumentasi (`docs/`)
-| Folder | Isi |
+## 6. Integrasi IoT (ESP32-CAM + OCR)
+- ESP32-CAM mengirim **gambar display timbangan** ke `POST /api/iot/weight` (multipart) atau berat langsung ke `POST /api/iot-value/weight`.
+- Otorisasi: **Bearer JWT** atau header **`X-IoT-Key`**.
+- Server menyimpan foto ke S3 (privat) lalu menjalankan **OCR (Tesseract)** → berat muncul di layar verifikasi Bulog.
+- Koleksi uji: `deploy/BlockAgriChain.postman_collection.json` (import ke Postman).
+
+---
+
+## 7. Fungsi Chaincode (`chaincode/`)
+`RegisterFarmer`, `SubmitHarvest`, `SubmitVerification` (→ otomatis `CalculateAllocation`),
+`ProposePolicy` / `ApprovePolicy`, `CreateDistribution` / `UpdateDistributionStatus`,
+`RequestPayment` / `ApprovePayment` / `RejectPayment`, `DisableFarmer`,
+serta query: `GetFarmer`, `GetHarvestById`, `GetActivePolicy`, `GetState`, **`GetTransactionHistory`** (audit trail).
+
+**Access Control (contoh endorsement):** `SubmitHarvest` → PetaniMSP; `SubmitVerification` → BulogMSP; `ApprovePolicy` → KemenkeuMSP+KementanMSP (2-of-2); `ApprovePayment` → KemenkeuMSP+PIHCMSP (2-of-2).
+
+---
+
+## 8. Deploy ke AWS (ringkas)
+- **EC2 (disarankan):** instance di private subnet (tanpa IP publik, diakses via Session Manager), di belakang **ALB**; database **RDS (SQL Server)**; foto di **S3**.
+  ```bash
+  sudo -i && cd /home/ssm-user/blockagrichain
+  git pull
+  docker compose -f deploy/docker-compose.app-rds.yml --env-file deploy/db.env up -d --build
+  ```
+- Detail: **[deploy/README-EC2.md](deploy/README-EC2.md)**.
+
+---
+
+## 9. Struktur Proyek
+```
+blockagrichain/
+├─ frontend/      # React + Vite (UI 5 peran)
+├─ backend-go/    # API Gateway Go (chi, JWT, Fabric Gateway, GORM)
+├─ chaincode/     # Go Chaincode (smart contract Fabric)
+├─ fabric/        # Jaringan Fabric (network.sh, configtx, crypto config)
+├─ deploy/        # Docker Compose, skrip deploy, koleksi Postman
+├─ docs/          # SKPL, DPPL, diagram, manajemen proyek
+└─ OCR Sample/    # Contoh gambar untuk uji OCR IoT
+```
+
+---
+
+## 10. Troubleshooting
+| Masalah | Solusi |
 |---|---|
-| `docs/spesifikasi/` | **SKPL & DPPL** (PDF/DOCX/PPTX + ekstrak teks) |
-| `docs/prototype/` | Prototype UI/UX React (final + sumber terbaca) |
-| `docs/mockup/` | Mockup HTML per peran (BlockAgriCulture) |
-| `docs/flow-diagram/` | ERD, on-chain, activity/PlantUML |
-| `docs/domain-design/` | Domain design blockchain |
-| `docs/manajemen-proyek/` | Project Charter (DOCX) + presentasi (PPTX) + generator |
+| `peer: command not found` | jalankan `export PATH=$PWD/fabric/bin:$PATH` |
+| `permission denied` saat `network.sh` | `chmod +x fabric/network.sh` lalu `chmod -R a+rX fabric/organizations` |
+| Backend gagal konek DB | cek `DATABASE_URL` di `backend-go/.env` & kontainer DB sudah `Up` |
+| `x509 / ECDSA verification failure` | bersihkan: `cd fabric && ./network.sh down`, lalu `./network.sh up` ulang |
+| Frontend tak terhubung API | pastikan API `:8080` jalan (`curl /api/health`) |
+
+---
+
+## Lisensi & Catatan
+Proyek akademik (KOM1635, IPB University). Dilarang menaruh **Private Key** atau berkas **`.env`** di repositori publik.
